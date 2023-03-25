@@ -9,9 +9,10 @@ import (
 
 type ElfObjFile struct {
 	ElfFile
-	MsectionnameData []byte
-	MsymbolTable     []Symbol
-	Mglobalsymndx    uint32
+	MsectionNameData []byte
+	MsymTable        []Symbol
+	MglobalSymndx    uint32
+	MsymNameData     []byte
 }
 
 func (f *ElfObjFile) LoadElfObj(contents *[]byte) {
@@ -28,31 +29,50 @@ func (f *ElfObjFile) getSectionNameData() {
 	}
 	// 获取存放SectionName字符串的Section数据
 	sectionname := f.GetSectionData(shstrndx)
-	f.MsectionnameData = sectionname
+	f.MsectionNameData = sectionname
 }
 
 func (f *ElfObjFile) GetSectionName(name_index uint32) string {
 	// 避免重复获取
-	if len(f.MsectionnameData) == 0 {
+	if len(f.MsectionNameData) == 0 {
 		f.getSectionNameData()
 	}
-	// 获取长度转成字符串
-	namelength := uint32(bytes.Index(f.MsectionnameData[name_index:], []byte{0}))
-	return string(f.MsectionnameData[name_index : name_index+namelength])
+	if len(f.MsectionNameData) != 0 {
+		// 获取长度转成字符串
+		namelength := uint32(bytes.Index(f.MsectionNameData[name_index:], []byte{0}))
+		return string(f.MsectionNameData[name_index : name_index+namelength])
+	}
+	return ""
 }
 
 func (f *ElfObjFile) PraseSymbolTable() {
 	symndx := f.GetTargetTypeOfSections(uint32(elf.SHT_SYMTAB))[0]
 	symdata := f.GetSectionData(int64(symndx))
 	symnum := int64(len(symdata)) / int64(SymbolSize)
+	// 获取符号名字section数据
+	symname := f.GetSectionData(int64(f.MsectionHdr[symndx].Link))
+	f.MsymNameData = symname
 
 	// 解析符号表数组
-	f.MsymbolTable = []Symbol{utils.BinRead[Symbol](symdata)}
+	f.MsymTable = []Symbol{utils.BinRead[Symbol](symdata)}
 	for i := int64(1); i < symnum; i++ {
 		symdata = symdata[SymbolSize:]
-		f.MsymbolTable = append(f.MsymbolTable, utils.BinRead[Symbol](symdata))
+		f.MsymTable = append(f.MsymTable, utils.BinRead[Symbol](symdata))
 	}
 
 	// 因为符号分为Local符号和Global符号，而ELF中Local在前Global在后，SymbolHader的Info就是Global符号在符号表中的起始位置
-	f.Mglobalsymndx = f.MsectionHdr[symndx].Info
+	f.MglobalSymndx = f.MsectionHdr[symndx].Info
+}
+
+func (f *ElfObjFile) GetSymbolName(name_index uint32) string {
+	// 避免重复获取
+	if len(f.MsymNameData) == 0 {
+		f.PraseSymbolTable()
+	}
+	if len(f.MsectionNameData) != 0 {
+		// 获取长度转成字符串
+		namelength := uint32(bytes.Index(f.MsymNameData[name_index:], []byte{0}))
+		return string(f.MsymNameData[name_index : name_index+namelength])
+	}
+	return ""
 }
