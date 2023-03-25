@@ -7,13 +7,14 @@ import (
 )
 
 type ElfFile struct {
-	MelfHdr     ElfHdr
-	MsectionHdr []SectionHdr
+	Mcontents   []byte       // FILE_BUFFER
+	MelfHdr     ElfHdr       // ELF_HEADER
+	MsectionHdr []SectionHdr // ELF_SECTION_HEADER[]
 }
 
-func LoadElf(contents *[]byte) ElfFile {
+func (f *ElfFile) LoadElf(contents *[]byte) {
 
-	f := ElfFile{}
+	f.Mcontents = *contents
 
 	// 判断是否是有效的ELF文件
 	if !bytes.HasPrefix(*contents, []byte("\x7fELF")) {
@@ -45,6 +46,19 @@ func LoadElf(contents *[]byte) ElfFile {
 		f.MsectionHdr = append(f.MsectionHdr, utils.BinRead[SectionHdr](context))
 		numSections--
 	}
+}
 
-	return f
+func (f *ElfFile) GetSectionData(secndx int64) (secdata []byte) {
+	hdr := f.MsectionHdr[secndx]
+	return f.Mcontents[hdr.Offset : hdr.Offset+hdr.Size]
+}
+
+func (f *ElfFile) GetTargetTypeOfSections(sectype uint32) (ndxarr []int) {
+	ret := []int{}
+	for i, hdr := range f.MsectionHdr {
+		if hdr.Type == sectype {
+			ret = append(ret, i)
+		}
+	}
+	return ret
 }

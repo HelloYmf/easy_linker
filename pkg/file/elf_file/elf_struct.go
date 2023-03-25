@@ -4,6 +4,7 @@ import "unsafe"
 
 const ElfHdrSize = unsafe.Sizeof(ElfHdr{})
 const SectionHdrSize = unsafe.Sizeof(SectionHdr{})
+const SymbolSize = unsafe.Sizeof(Symbol{})
 
 type ElfHdr struct {
 	Ident     [16]uint8
@@ -33,4 +34,13 @@ type SectionHdr struct {
 	Info      uint32
 	AddrAlign uint64
 	EntSize   uint64
+}
+
+type Symbol struct {
+	Name  uint32
+	Info  uint8
+	Other uint8
+	Shndx uint16
+	Val   uint64
+	Size  uint64
 }

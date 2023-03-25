@@ -19,10 +19,17 @@ func main() {
 
 	file := file.MustNewFile(os.Args[1])
 
-	elffile := elf_file.LoadElf(&file.Contents)
+	objfils := elf_file.ElfObjFile{}
+	objfils.LoadElfObj(&file.Contents)
 
-	fmt.Println(elffile.MelfHdr)
+	objfils.PraseSymbolTable()
 
-	fmt.Println(elffile.MsectionHdr)
-
+	// 遍历符号表数组
+	for i, sym := range objfils.MsymbolTable {
+		if i >= int(objfils.Mglobalsymndx) {
+			fmt.Printf("global symbol: %v\n", sym)
+		} else {
+			fmt.Printf("local symbol: %v\n", sym)
+		}
+	}
 }
