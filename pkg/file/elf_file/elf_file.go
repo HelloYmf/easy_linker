@@ -2,6 +2,7 @@ package elf_file
 
 import (
 	"bytes"
+	"debug/elf"
 
 	"github.com/HelloYmf/elf_linker/pkg/utils"
 )
@@ -12,9 +13,10 @@ type ElfFile struct {
 	MsectionHdr []SectionHdr // ELF_SECTION_HEADER[]
 }
 
-func (f *ElfFile) LoadElf(contents *[]byte) {
+func LoadElf(contents *[]byte) ElfFile {
 
-	f.Mcontents = *contents
+	ret := ElfFile{}
+	ret.Mcontents = *contents
 
 	// 判断是否是有效的ELF文件
 	if !bytes.HasPrefix(*contents, []byte("\x7fELF")) {
@@ -28,7 +30,7 @@ func (f *ElfFile) LoadElf(contents *[]byte) {
 
 	// 读取ElfHeader数据
 	elfHdr := utils.BinRead[ElfHdr](*contents)
-	f.MelfHdr = elfHdr
+	ret.MelfHdr = elfHdr
 
 	// 读取第一个SectionHeader数据
 	context := (*contents)[elfHdr.ShOff:]
@@ -39,13 +41,15 @@ func (f *ElfFile) LoadElf(contents *[]byte) {
 	if numSections == 0 {
 		numSections = sHdr.Size
 	}
-	f.MsectionHdr = []SectionHdr{sHdr}
+	ret.MsectionHdr = []SectionHdr{sHdr}
 	// 循环读取SectionHeader数据
 	for numSections > 1 {
 		context = context[SectionHdrSize:]
-		f.MsectionHdr = append(f.MsectionHdr, utils.BinRead[SectionHdr](context))
+		ret.MsectionHdr = append(ret.MsectionHdr, utils.BinRead[SectionHdr](context))
 		numSections--
 	}
+
+	return ret
 }
 
 func (f *ElfFile) GetSectionData(secndx int64) (secdata []byte) {
@@ -61,4 +65,16 @@ func (f *ElfFile) GetTargetTypeOfSections(sectype uint32) (ndxarr []int) {
 		}
 	}
 	return ret
+}
+
+func (f *ElfFile) GetElfArch() string {
+	// 判断处理器架构
+	switch f.MelfHdr.Machine {
+	case uint16(elf.EM_RISCV):
+		// 判断文件位数
+		if f.MelfHdr.Type == 2 {
+			return "elf64lriscv"
+		}
+	}
+	return "unknown"
 }

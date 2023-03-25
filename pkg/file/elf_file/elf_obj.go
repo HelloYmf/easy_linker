@@ -15,8 +15,8 @@ type ElfObjFile struct {
 	MsymNameData     []byte
 }
 
-func (f *ElfObjFile) LoadElfObj(contents *[]byte) {
-	f.LoadElf(contents)
+func LoadElfObj(contents *[]byte) ElfObjFile {
+	return ElfObjFile{ElfFile: LoadElf(contents)}
 }
 
 func (f *ElfObjFile) getSectionNameData() {
@@ -37,12 +37,12 @@ func (f *ElfObjFile) GetSectionName(name_index uint32) string {
 	if len(f.MsectionNameData) == 0 {
 		f.getSectionNameData()
 	}
-	if len(f.MsectionNameData) != 0 {
-		// 获取长度转成字符串
-		namelength := uint32(bytes.Index(f.MsectionNameData[name_index:], []byte{0}))
-		return string(f.MsectionNameData[name_index : name_index+namelength])
+	if len(f.MsectionNameData) == 0 {
+		return ""
 	}
-	return ""
+	// 获取长度转成字符串
+	namelength := uint32(bytes.Index(f.MsectionNameData[name_index:], []byte{0}))
+	return string(f.MsectionNameData[name_index : name_index+namelength])
 }
 
 func (f *ElfObjFile) PraseSymbolTable() {
@@ -69,10 +69,10 @@ func (f *ElfObjFile) GetSymbolName(name_index uint32) string {
 	if len(f.MsymNameData) == 0 {
 		f.PraseSymbolTable()
 	}
-	if len(f.MsectionNameData) != 0 {
-		// 获取长度转成字符串
-		namelength := uint32(bytes.Index(f.MsymNameData[name_index:], []byte{0}))
-		return string(f.MsymNameData[name_index : name_index+namelength])
+	if len(f.MsymNameData) == 0 {
+		return ""
 	}
-	return ""
+	// 获取长度转成字符串
+	namelength := uint32(bytes.Index(f.MsymNameData[name_index:], []byte{0}))
+	return string(f.MsymNameData[name_index : name_index+namelength])
 }

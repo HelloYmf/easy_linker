@@ -6,7 +6,7 @@ o_path=out/tests/$test_name
 
 mkdir -p "$o_path"
 
-cat <<EOF | riscv64-linux-gnu-gcc -o "$o_path"/"$test_name".o -c -xc -
+cat <<EOF | $CC -o "$o_path"/"$test_name".o -c -xc -
 #include <stdio.h>
 
 int main(void) {
@@ -15,4 +15,5 @@ int main(void) {
 }
 EOF
 
-./jlinker "$o_path"/"$test_name".o
+$CC -B. -static "$o_path"/"$test_name".o
+# ./jlinker "$o_path"/"$test_name".o
