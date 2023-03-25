@@ -1,4 +1,4 @@
-package elf
+package file
 
 import (
 	"os"

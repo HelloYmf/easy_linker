@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/HelloYmf/elf_linker/pkg/elf"
+	"github.com/HelloYmf/elf_linker/pkg/file"
+	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
 )
 
@@ -16,9 +17,9 @@ func main() {
 		utils.FatalExit("wrong args.")
 	}
 
-	file := elf.MustNewFile(os.Args[1])
+	file := file.MustNewFile(os.Args[1])
 
-	elffile := elf.LoadElf(&file.Contents)
+	elffile := elf_file.LoadElf(&file.Contents)
 
 	fmt.Println(elffile.MelfHdr)
 

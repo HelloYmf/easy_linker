@@ -1,4 +1,4 @@
-package elf
+package elf_file
 
 import "unsafe"
 
