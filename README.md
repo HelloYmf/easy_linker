@@ -1,4 +1,4 @@
-# elf_linker
+# easy_linker
 
 ## 交叉编译工具
 - sudo apt upgrate                                </br>
