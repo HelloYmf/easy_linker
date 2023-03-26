@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"debug/elf"
 
+	"github.com/HelloYmf/elf_linker/pkg/file"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
 )
 
@@ -15,8 +16,16 @@ type ElfObjFile struct {
 	MsymNameData     []byte
 }
 
-func LoadElfObj(contents *[]byte) ElfObjFile {
-	return ElfObjFile{ElfFile: LoadElf(contents)}
+func LoadElfObjBuffer(contents []byte) *ElfObjFile {
+	return &ElfObjFile{ElfFile: *LoadElfBuffer(contents)}
+}
+
+func LoadElfObjFile(filename string) *ElfObjFile {
+	return &ElfObjFile{ElfFile: *LoadElfFile(filename)}
+}
+
+func LoadElfObj(f file.File) *ElfObjFile {
+	return &ElfObjFile{ElfFile: *LoadElf(f)}
 }
 
 func (f *ElfObjFile) getSectionNameData() {

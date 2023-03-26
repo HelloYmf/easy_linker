@@ -85,13 +85,13 @@ func PraseArgs(args []string) LinkContext {
 		// 解析库目录
 		isArg, curArg = JudgeArgs(&args, "L")
 		if isArg {
-			ctx.MargsData.MlibraryPath = append(ctx.MargsData.MlibraryPath, curArg)
+			ctx.MargsData.MlibraryPathList = append(ctx.MargsData.MlibraryPathList, curArg)
 			continue
 		}
 		// 处理l参数（保留）
 		isArg, curArg = JudgeArgs(&args, "l")
 		if isArg {
-			ctx.MargsData.Mremaining = append(ctx.MargsData.Mremaining, "-l"+curArg)
+			ctx.MargsData.MstaticLibraryList = append(ctx.MargsData.MstaticLibraryList, "-l"+curArg)
 			continue
 		}
 		// 忽略列表
@@ -155,7 +155,7 @@ func PraseArgs(args []string) LinkContext {
 			utils.FatalExit(fmt.Sprintf("Wrong option %s.\n", args[0]))
 		}
 
-		ctx.MargsData.MobjList = append(ctx.MargsData.MobjList, args[0])
+		ctx.MargsData.MobjPathList = append(ctx.MargsData.MobjPathList, args[0])
 		args = args[1:]
 	}
 	return ctx
