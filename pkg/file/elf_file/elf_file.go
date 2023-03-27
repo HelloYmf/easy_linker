@@ -19,7 +19,7 @@ func LoadElfBuffer(contents []byte) *ElfFile {
 }
 
 func LoadElfFile(filename string) *ElfFile {
-	f := file.NewDiskFile(filename)
+	f := file.MustNewDiskFile(filename)
 	return InitElf(f)
 }
 

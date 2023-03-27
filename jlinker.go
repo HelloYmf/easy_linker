@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/HelloYmf/elf_linker/pkg/file"
+	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 	"github.com/HelloYmf/elf_linker/pkg/linker"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
 )
@@ -17,20 +19,20 @@ func main() {
 	args := os.Args[1:]
 	ctx := linker.PraseArgs(args)
 
-	f := file.NewDiskFile(os.Args[2])
-	linker.DealFile(&ctx, f)
+	// 如果链接器没有给参数，就获取第一个obj文件的Machine
+	if ctx.MargsData.March == "" {
+		first_file := file.MustNewDiskFile(ctx.MargsData.MobjPathList[0])
+		switch first_file.Type {
+		case file.FileTypeElfObject:
+			obj_file := elf_file.LoadElfObj(first_file)
+			ctx.MargsData.March = obj_file.GetElfArch()
+		case file.FileTypePeObject:
+			// TODO
+		}
+	}
 
-	// // 如果链接器没有给参数，就获取第一个obj文件的Machine
-	// if ctx.MargsData.March == "" {
-	// 	first_file := file.NewDiskFile(ctx.MargsData.MobjPathList[0])
-	// 	switch first_file.Type {
-	// 	case file.FileTypeElfObject:
-	// 		obj_file := elf_file.LoadElfObj(first_file)
-	// 		ctx.MargsData.March = obj_file.GetElfArch()
-	// 	case file.FileTypePeObject:
-	// 		// TODO
-	// 	}
-	// }
+	linker.InputFiles(&ctx)
+	fmt.Printf("total loaded objs: %d\n", len(ctx.MargsData.MobjFileList))
 
 	// fmt.Printf("Output path: %s\n", ctx.MargsData.Moutput)
 	// fmt.Printf("Arch: %s\n", ctx.MargsData.March)

@@ -31,9 +31,22 @@ type File struct {
 	Type     FileType
 }
 
-func NewDiskFile(filename string) *File {
+func MustNewDiskFile(filename string) *File {
 	contents, err := os.ReadFile(filename)
 	utils.MustNoErr(err)
+	ft := judgeFileType(contents)
+	return &File{
+		Name:     filename,
+		Contents: contents,
+		Type:     ft,
+	}
+}
+
+func TestNewDiskFile(filename string) *File {
+	contents, err := os.ReadFile(filename)
+	if err != nil {
+		return nil
+	}
 	ft := judgeFileType(contents)
 	return &File{
 		Name:     filename,

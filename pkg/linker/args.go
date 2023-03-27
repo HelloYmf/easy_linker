@@ -95,62 +95,52 @@ func PraseArgs(args []string) LinkContext {
 			continue
 		}
 		// 忽略列表
-		isArg, curArg = JudgeArgs(&args, "sysroot")
+		isArg, _ = JudgeArgs(&args, "sysroot")
 		if isArg {
-			fmt.Printf("Ignore arg: sysroot %s\n", curArg)
 			continue
 		}
 		isArg = JudgeFlags(&args, "static")
 		if isArg {
-			fmt.Printf("Ignore flag: static\n")
 			continue
 		}
-		isArg, curArg = JudgeArgs(&args, "plugin")
+		isArg, _ = JudgeArgs(&args, "plugin")
 		if isArg {
-			fmt.Printf("Ignore arg: plugin %s\n", curArg)
 			continue
 		}
-		isArg, curArg = JudgeArgs(&args, "plugin-opt")
+		isArg, _ = JudgeArgs(&args, "plugin-opt")
 		if isArg {
-			fmt.Printf("Ignore arg: plugin-opt %s\n", curArg)
 			continue
 		}
 		isArg = JudgeFlags(&args, "as-needed")
 		if isArg {
-			fmt.Printf("Ignore flag: as-needed\n")
 			continue
 		}
 		isArg = JudgeFlags(&args, "start-group")
 		if isArg {
-			fmt.Printf("Ignore flag: start-group\n")
 			continue
 		}
 		isArg = JudgeFlags(&args, "end-group")
 		if isArg {
-			fmt.Printf("Ignore flag: end-group\n")
 			continue
 		}
-		isArg, curArg = JudgeArgs(&args, "hash-style")
+		isArg, _ = JudgeArgs(&args, "hash-style")
 		if isArg {
-			fmt.Printf("Ignore arg: hash-style %s\n", curArg)
 			continue
 		}
-		isArg, curArg = JudgeArgs(&args, "build-id")
+		isArg, _ = JudgeArgs(&args, "build-id")
 		if isArg {
-			fmt.Printf("Ignore arg: build-id %s\n", curArg)
 			continue
 		}
 		isArg = JudgeFlags(&args, "s")
 		if isArg {
-			fmt.Printf("Ignore flag: s\n")
 			continue
 		}
 		isArg = JudgeFlags(&args, "no-relax")
 		if isArg {
-			fmt.Printf("Ignore flag: no-relax\n")
 			continue
 		}
 
+		// 无法识别的参数
 		if args[0][0] == '-' {
 			utils.FatalExit(fmt.Sprintf("Wrong option %s.\n", args[0]))
 		}
