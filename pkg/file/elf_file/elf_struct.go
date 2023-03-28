@@ -2,6 +2,7 @@ package elf_file
 
 import (
 	"bytes"
+	"debug/elf"
 	"strconv"
 	"strings"
 	"unsafe"
@@ -51,6 +52,16 @@ type ElfSymbol struct {
 	Shndx uint16
 	Val   uint64
 	Size  uint64
+}
+
+// 判断符号是否是绝对符号，不需要重定向
+func (sym *ElfSymbol) IsAbs() bool {
+	return sym.Shndx == uint16(elf.SHN_ABS)
+}
+
+// 判断符号是否是未定义符号
+func (sym *ElfSymbol) IsUndef() bool {
+	return sym.Shndx == uint16(elf.SHN_UNDEF)
 }
 
 type ElfArHeader struct {

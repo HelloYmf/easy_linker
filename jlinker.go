@@ -16,6 +16,7 @@ func main() {
 	if len(os.Args) < 2 {
 		utils.FatalExit("wrong args.")
 	}
+
 	args := os.Args[1:]
 	ctx := linker.PraseArgs(args)
 
@@ -32,21 +33,17 @@ func main() {
 	}
 
 	linker.InputFiles(&ctx)
-	fmt.Printf("total loaded objs: %d\n", len(ctx.MargsData.MobjFileList))
+	linker.ResolveSymbols(&ctx)
 
-	// fmt.Printf("Output path: %s\n", ctx.MargsData.Moutput)
-	// fmt.Printf("Arch: %s\n", ctx.MargsData.March)
-	// fmt.Printf("MlibraryPath: %v\n", ctx.MargsData.MlibraryPathList)
-	// fmt.Printf("MobjPathList: %v\n", ctx.MargsData.MobjPathList)
-	// fmt.Printf("StaticLibraryList: %v\n", ctx.MargsData.MstaticLibraryList)
+	fmt.Printf("total loaded objs: %d\n", len(ctx.MobjFileList))
 
-	// objfils := elf_file.LoadElfObjFile(ctx.MargsData.MobjPathList[0])
-	// objfils.PraseSymbolTable()
-	// // 遍历符号表数组
-	// for _, sym := range objfils.MsymTable {
-	// 	symname := objfils.GetSymbolName(sym.Name)
-	// 	if len(symname) != 0 {
-	// 		fmt.Printf("\t%s\n", symname)
-	// 	}
-	// }
+	for _, obj := range ctx.MobjFileList {
+		if obj.MobjFile.Mfile.Name == "out/tests/call_api/call_api.o" {
+			for _, sym := range obj.MallSymbols {
+				if sym.Mname != "" {
+					fmt.Printf("sym: %s from: %s\n", sym.Mname, sym.MparentFile.MobjFile.Mfile.Name)
+				}
+			}
+		}
+	}
 }

@@ -28,3 +28,15 @@ func BinRead[T any](data []byte) (val T) {
 	MustNoErr(err)
 	return val
 }
+
+func RemoveIf[T any](elems []T, condition func(T) bool) []T {
+	i := 0
+	for _, elem := range elems {
+		if condition(elem) {
+			continue
+		}
+		elems[i] = elem
+		i++
+	}
+	return elems[:i]
+}

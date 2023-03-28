@@ -1,0 +1,45 @@
+{
+
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${workspaceFolder}",
+            "env": {},
+            "args": [
+            "-plugin",
+            "/usr/lib/gcc-cross/riscv64-linux-gnu/12/liblto_plugin.so",
+            "-plugin-opt=/usr/lib/gcc-cross/riscv64-linux-gnu/12/lto-wrapper",
+            "-plugin-opt=-fresolution=/tmp/cc6qPNGP.res",
+            "-plugin-opt=-pass-through=-lgcc",
+            "-plugin-opt=-pass-through=-lgcc_eh",
+            "-plugin-opt=-pass-through=-lc",
+            "--sysroot=/",
+            "--build-id", 
+            "-hash-style=gnu",
+            "--as-needed",
+            "-melf64lriscv",
+            "-static",
+            "/usr/lib/gcc-cross/riscv64-linux-gnu/12/../../../../riscv64-linux-gnu/lib/crt1.o",
+            "/usr/lib/gcc-cross/riscv64-linux-gnu/12/crti.o",
+            "/usr/lib/gcc-cross/riscv64-linux-gnu/12/crtbeginT.o",
+            "-L.",
+            "-L/usr/lib/gcc-cross/riscv64-linux-gnu/12",
+            "-L/usr/lib/gcc-cross/riscv64-linux-gnu/12/../../../../riscv64-linux-gnu/lib",
+            "-L/lib/riscv64-linux-gnu",
+            "-L/usr/lib/riscv64-linux-gnu",
+            "out/tests/hello/hello.o",
+            "--start-group",
+            "-lgcc", 
+            "-lgcc_eh",
+            "-lc",
+            "--end-group",
+            "/usr/lib/gcc-cross/riscv64-linux-gnu/12/crtend.o",
+            "/usr/lib/gcc-cross/riscv64-linux-gnu/12/crtn.o"
+        ]
+        }
+    ]
+}

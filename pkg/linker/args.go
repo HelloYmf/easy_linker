@@ -76,7 +76,7 @@ func PraseArgs(args []string) LinkContext {
 		isArg, curArg = JudgeArgs(&args, "m")
 		if isArg {
 			if curArg == "elf64lriscv" {
-				ctx.MargsData.March = "elf64"
+				ctx.MargsData.March = "elf64lriscv"
 			} else {
 				utils.FatalExit(fmt.Sprintf("option -m: unknown arch %s.\n", curArg))
 			}

@@ -10,11 +10,10 @@ import (
 
 type ElfObjFile struct {
 	ElfFile
-	MsectionNameData []byte
-	MsymTable        []ElfSymbol
-	MglobalSymndx    uint32
-	MsymNameData     []byte
-	Mparent          string // 如果是从lib中获取的，需要有这个字段
+	MsymTable     []ElfSymbol
+	MglobalSymndx uint32
+	MsymNameData  []byte
+	Mparent       string // 所属lib
 }
 
 func LoadElfObjBuffer(contents []byte) *ElfObjFile {
@@ -37,34 +36,13 @@ func (f *ElfObjFile) SetObjFileParent(parent string) {
 	f.Mparent = parent
 }
 
-func (f *ElfObjFile) getSectionNameData() {
-	// 获取节名字所在的section的索引
-	shstrndx := int64(f.MelfHdr.ShStrndx)
-	// 如果ELF_HEADER中字段ShStrndx的2字节存不下
-	if f.MelfHdr.ShStrndx == uint16(elf.SHN_XINDEX) {
-		// 此时真正的索引在第一个SectionHeader的Link字段3字节
-		shstrndx = int64(f.MsectionHdr[0].Link)
+func (f *ElfObjFile) PraseSymbolTable(flag bool) {
+	sec := f.GetTargetTypeOfSections(uint32(elf.SHT_SYMTAB))
+	if len(sec) == 0 {
+		return
 	}
-	// 获取存放SectionName字符串的Section数据
-	sectionname := f.GetSectionData(shstrndx)
-	f.MsectionNameData = sectionname
-}
-
-func (f *ElfObjFile) GetSectionName(name_index uint32) string {
-	// 避免重复获取
-	if len(f.MsectionNameData) == 0 {
-		f.getSectionNameData()
-	}
-	if len(f.MsectionNameData) == 0 {
-		return ""
-	}
-	// 获取长度转成字符串
-	namelength := uint32(bytes.Index(f.MsectionNameData[name_index:], []byte{0}))
-	return string(f.MsectionNameData[name_index : name_index+namelength])
-}
-
-func (f *ElfObjFile) PraseSymbolTable() {
-	symndx := f.GetTargetTypeOfSections(uint32(elf.SHT_SYMTAB))[0]
+	symndx := sec[0]
+	// 获取符号表数据
 	symdata := f.GetSectionData(int64(symndx))
 	symnum := int64(len(symdata)) / int64(ElfSymbolSize)
 	// 获取符号名字section数据
@@ -85,7 +63,7 @@ func (f *ElfObjFile) PraseSymbolTable() {
 func (f *ElfObjFile) GetSymbolName(name_index uint32) string {
 	// 避免重复获取
 	if len(f.MsymNameData) == 0 {
-		f.PraseSymbolTable()
+		f.PraseSymbolTable(true)
 	}
 	if len(f.MsymNameData) == 0 {
 		return ""

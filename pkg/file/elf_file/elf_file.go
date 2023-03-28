@@ -1,6 +1,7 @@
 package elf_file
 
 import (
+	"bytes"
 	"debug/elf"
 
 	"github.com/HelloYmf/elf_linker/pkg/file"
@@ -11,6 +12,8 @@ type ElfFile struct {
 	Mfile       file.File
 	MelfHdr     ElfHdr          // ELF_HEADER
 	MsectionHdr []ElfSectionHdr // ELF_SECTION_HEADER[]
+
+	MsectionNameData []byte
 }
 
 func LoadElfBuffer(contents []byte) *ElfFile {
@@ -85,4 +88,30 @@ func (f *ElfFile) GetElfArch() string {
 		return "elf64lriscv"
 	}
 	return "unknown"
+}
+
+func (f *ElfFile) GetSectionName(name_index uint32) string {
+	// 避免重复获取
+	if len(f.MsectionNameData) == 0 {
+		f.getSectionNameData()
+	}
+	if len(f.MsectionNameData) == 0 {
+		return ""
+	}
+	// 获取长度转成字符串
+	namelength := uint32(bytes.Index(f.MsectionNameData[name_index:], []byte{0}))
+	return string(f.MsectionNameData[name_index : name_index+namelength])
+}
+
+func (f *ElfFile) getSectionNameData() {
+	// 获取节名字所在的section的索引
+	shstrndx := int64(f.MelfHdr.ShStrndx)
+	// 如果ELF_HEADER中字段ShStrndx的2字节存不下
+	if f.MelfHdr.ShStrndx == uint16(elf.SHN_XINDEX) {
+		// 此时真正的索引在第一个SectionHeader的Link字段3字节
+		shstrndx = int64(f.MsectionHdr[0].Link)
+	}
+	// 获取存放SectionName字符串的Section数据
+	sectionname := f.GetSectionData(shstrndx)
+	f.MsectionNameData = sectionname
 }

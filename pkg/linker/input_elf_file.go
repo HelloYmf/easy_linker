@@ -23,7 +23,6 @@ func InputFiles(ctx *LinkContext) {
 			f = file.TestNewDiskFile(libpath)
 			if f != nil {
 				DealFile(ctx, f)
-				fmt.Printf("Load lib success: %s\n", libpath)
 				break
 			}
 		}
@@ -32,10 +31,10 @@ func InputFiles(ctx *LinkContext) {
 			utils.FatalExit(errinfo)
 		}
 	}
+
 	// 处理所有输入的.o文件
 	for _, oriobjname := range (*ctx).MargsData.MobjPathList {
 		f := file.MustNewDiskFile(oriobjname)
-		fmt.Printf("Load input obj success: %s\n", f.Name)
 		DealFile(ctx, f)
 	}
 }
@@ -45,13 +44,28 @@ func DealFile(ctx *LinkContext, f *file.File) {
 	case file.FileTypeElfObject:
 		// 解析.o文件
 		ef := elf_file.LoadElfObj(f)
-		ctx.MargsData.MobjFileList = append(ctx.MargsData.MobjFileList, ef.Mfile)
+		CheckMachine(ctx, ef)
+
+		inputfil := NewElfInputObj(ctx, ef)
+		inputfil.MisUsed = true
+
+		ctx.MobjFileList = append(ctx.MobjFileList, inputfil)
 	case file.FileTypeElfArchive:
 		// 解析.a文件
 		eaf := elf_file.LoadElfArchive(f)
 		objs := eaf.ReadElfArchiveObjs()
 		for _, obj := range *objs {
-			ctx.MargsData.MobjFileList = append(ctx.MargsData.MobjFileList, obj.Mfile)
+			CheckMachine(ctx, &obj)
+			inputfil := NewElfInputObj(ctx, &obj)
+			inputfil.MisUsed = false
+			ctx.MobjFileList = append(ctx.MobjFileList, inputfil)
 		}
+	}
+}
+
+// 检查obj文件架构一致性
+func CheckMachine(ctx *LinkContext, f *elf_file.ElfObjFile) {
+	if f.GetElfArch() != ctx.MargsData.March {
+		utils.FatalExit("Inconsistent architecture")
 	}
 }
