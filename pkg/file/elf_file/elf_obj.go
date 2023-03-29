@@ -13,7 +13,7 @@ type ElfObjFile struct {
 	MsymTable     []ElfSymbol
 	MglobalSymndx uint32
 	MsymNameData  []byte
-	Mparent       string // 所属lib
+	MlibName      string // 所属lib
 }
 
 func LoadElfObjBuffer(contents []byte) *ElfObjFile {
@@ -33,7 +33,7 @@ func (f *ElfObjFile) SetObjFileName(name string) {
 }
 
 func (f *ElfObjFile) SetObjFileParent(parent string) {
-	f.Mparent = parent
+	f.MlibName = parent
 }
 
 func (f *ElfObjFile) PraseSymbolTable(flag bool) {

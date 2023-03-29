@@ -49,7 +49,7 @@ type ElfSymbol struct {
 	Name  uint32
 	Info  uint8
 	Other uint8
-	Shndx uint16
+	Shndx uint16 // 如果符号定义在本目标文件中，该值表示这个符号所在的段在段表中的索引。如果符号不再本目标文件中，或者对于一些特殊符号，Shndx取特殊值
 	Val   uint64
 	Size  uint64
 }
@@ -62,6 +62,10 @@ func (sym *ElfSymbol) IsAbs() bool {
 // 判断符号是否是未定义符号
 func (sym *ElfSymbol) IsUndef() bool {
 	return sym.Shndx == uint16(elf.SHN_UNDEF)
+}
+
+func (sym *ElfSymbol) IsCommon() bool {
+	return sym.Shndx == uint16(elf.SHN_COMMON)
 }
 
 type ElfArHeader struct {

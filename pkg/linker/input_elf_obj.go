@@ -1,6 +1,7 @@
 package linker
 
 import (
+	"bytes"
 	"debug/elf"
 	"fmt"
 
@@ -14,18 +15,23 @@ type InputElfObj struct {
 	Msymtabndxdata []uint32
 	MisUsed        bool
 
-	MallSymbols   []*InputElfSymbol // 当前文件中所有用到的符号
-	MlocalSymbols []InputElfSymbol  // 当前文件中所有局部符号
+	MallSymbols     []*InputElfSymbol      // 当前文件中所有用到的符号
+	MlocalSymbols   []InputElfSymbol       // 当前文件中所有局部符号
+	MmergedSections []*ElfMergeableSection // 当前文件中所有可合并的节
 }
 
 func NewElfInputObj(ctx *LinkContext, f *elf_file.ElfObjFile) *InputElfObj {
 	reto := &InputElfObj{MobjFile: *f}
 	reto.MisUsed = false
 
+	// 初始化sections
 	reto.InitialzeSections()
 	// 解析符号表
 	reto.MobjFile.PraseSymbolTable(true)
+	// 初始化符号
 	reto.InitialzeSymbols(ctx)
+	// 初始化可合并的节
+	reto.InitialzeMergeableSections(ctx)
 
 	return reto
 }
@@ -68,7 +74,7 @@ func (io *InputElfObj) InitialzeSymbols(ctx *LinkContext) {
 		local_sym.Msymndx = int32(i)
 
 		if !symhdr.IsAbs() {
-			index := io.GetSymtabShndx(symhdr, i)
+			index := io.GetSymtabShndx(symhdr, uint64(i))
 			if index == -1 {
 				continue
 			}
@@ -97,9 +103,9 @@ func (io *InputElfObj) GetSymtabShndxSecdata(shdr *elf_file.ElfSectionHdr) {
 	}
 }
 
-func (io *InputElfObj) GetSymtabShndx(sym elf_file.ElfSymbol, ndx int) int64 {
-	if ndx > len(io.Msymtabndxdata) {
-		return -1
+func (io *InputElfObj) GetSymtabShndx(sym elf_file.ElfSymbol, ndx uint64) int64 {
+	if ndx > uint64(len(io.MobjFile.MsymTable)) {
+		utils.FatalExit("range of MsymTable.")
 	}
 	if sym.Shndx == uint16(elf.SHN_XINDEX) {
 		return int64(io.Msymtabndxdata[ndx])
@@ -119,8 +125,8 @@ func (io *InputElfObj) ResolveSymbols() {
 		}
 
 		var isec *InputElfSection
-		if symhdr.IsAbs() {
-			isec = io.GetSection(*symhdr, int(i))
+		if !symhdr.IsAbs() {
+			isec = io.GetSection(*symhdr, uint64(i))
 			if isec == nil {
 				continue
 			}
@@ -136,7 +142,7 @@ func (io *InputElfObj) ResolveSymbols() {
 	}
 }
 
-func (io *InputElfObj) GetSection(sym elf_file.ElfSymbol, ndx int) *InputElfSection {
+func (io *InputElfObj) GetSection(sym elf_file.ElfSymbol, ndx uint64) *InputElfSection {
 	idx := io.GetSymtabShndx(sym, ndx)
 	if idx == -1 {
 		return nil
@@ -168,5 +174,101 @@ func (io *InputElfObj) ClearSymbols() {
 		if sym.MparentFile == io {
 			sym.ClearSysmbol()
 		}
+	}
+}
+
+func (io *InputElfObj) InitialzeMergeableSections(ctx *LinkContext) {
+	io.MmergedSections = make([]*ElfMergeableSection, len(io.MinputSections))
+	for i := 0; i < len(io.MinputSections); i++ {
+		sec := io.MinputSections[i]
+		if sec != nil && sec.MisUserd && sec.MparentFile.MelfHdr.Flags&uint32(elf.SHF_MERGE) != 0 {
+			io.MmergedSections[i] = splitSections(ctx, sec)
+			sec.MisUserd = false
+		}
+	}
+}
+
+func findStringNil(data []byte, endSize int) int {
+	if endSize == 1 {
+		return bytes.Index(data, []byte{0})
+	}
+	for i := 0; i < len(data)-endSize; i += endSize {
+		bs := data[i : i+endSize]
+		if utils.AllZeros(bs) {
+			return i
+		}
+	}
+	return -1
+}
+
+func splitSections(ctx *LinkContext, isec *InputElfSection) *ElfMergeableSection {
+	ms := &ElfMergeableSection{}
+	hdr := isec.GetSectionHdr()
+
+	ms.Mparent = GetMergedSectionInstance(ctx, isec.GetParentName(), uint64(hdr.Type), hdr.Flags)
+
+	ms.Mp2Align = isec.Mp2Align
+
+	data := isec.Mcontents
+	offset := 0
+
+	if hdr.Flags&uint64(elf.SHF_STRINGS) != 0 {
+		for len(data) >= 0 {
+			end := findStringNil(data, int(hdr.EntSize))
+			if end == -1 {
+				utils.FatalExit("string not end.")
+			}
+			subdata := data[:end+int(hdr.EntSize)]
+			data = data[end+int(hdr.EntSize):]
+			ms.Moridata = append(ms.Moridata, string(subdata))
+			ms.MblockOffset = append(ms.MblockOffset, uint32(offset))
+			offset += int(hdr.EntSize)
+		}
+	} else {
+		if len(data)%int(hdr.EntSize) != 0 {
+			utils.FatalExit("section data size wrong.")
+		}
+		for len(data) > 0 {
+			subdata := data[:hdr.EntSize]
+			data = data[hdr.EntSize:]
+			ms.Moridata = append(ms.Moridata, string(subdata))
+			ms.MblockOffset = append(ms.MblockOffset, uint32(offset))
+			offset += int(hdr.EntSize)
+		}
+	}
+	return ms
+}
+
+func (io *InputElfObj) RegisterSectionPieces() {
+	for _, ms := range io.MmergedSections {
+		if ms == nil {
+			continue
+		}
+		ms.Mblock = make([]*ElfSectionBlock, len(ms.Moridata))
+		for i := 0; i < len(ms.Moridata); i++ {
+			ms.Mblock = append(ms.Mblock, ms.Mparent.Insert(ms.Moridata[i], ms.Mp2Align))
+		}
+	}
+
+	for i := 1; i < len(io.MallSymbols); i++ {
+		sym := io.MallSymbols[i]
+		symhdr := &io.MobjFile.MsymTable[i]
+
+		if symhdr.IsAbs() || symhdr.IsUndef() || symhdr.IsCommon() {
+			continue
+		}
+
+		idx := io.GetSymtabShndx(*symhdr, uint64(i))
+		m := io.MmergedSections[idx]
+		if m == nil {
+			continue
+		}
+
+		block, off := m.GetBlock(uint32(symhdr.Val))
+		if block == nil {
+			utils.FatalExit("wrong block.")
+		}
+		sym.SetSectionBlock(block)
+		sym.Mvalue = int(off)
 	}
 }

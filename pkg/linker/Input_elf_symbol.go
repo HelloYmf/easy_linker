@@ -3,11 +3,13 @@ package linker
 import "github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 
 type InputElfSymbol struct {
-	MparentFile   *InputElfObj     // 所属文件
+	MparentFile *InputElfObj // 所属文件
+	Mname       string       // 名字
+	Mvalue      int
+	Msymndx     int32 // SectionHeader数组中索引
+
 	MinputSection *InputElfSection // 所属的section
-	Mname         string           // 名字
-	Mvalue        int
-	Msymndx       int32 // SectionHader数组中索引
+	MsectionBlock *ElfSectionBlock // 所属的block，与Inputsection互斥
 }
 
 func NewElfInputSymbol(name string) *InputElfSymbol {
@@ -27,6 +29,12 @@ func GetElfSymbolByName(ctx *LinkContext, name string) *InputElfSymbol {
 
 func (isym *InputElfSymbol) SetInputSection(is *InputElfSection) {
 	isym.MinputSection = is
+	isym.MsectionBlock = nil
+}
+
+func (isym *InputElfSymbol) SetSectionBlock(sb *ElfSectionBlock) {
+	isym.MsectionBlock = sb
+	isym.MinputSection = nil
 }
 
 func (is *InputElfSymbol) GetSymbolStruct() *elf_file.ElfSymbol {

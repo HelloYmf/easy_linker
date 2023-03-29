@@ -9,9 +9,10 @@ type ContextArgs struct {
 }
 
 type LinkContext struct {
-	MargsData    ContextArgs
-	MobjFileList []*InputElfObj             // obj文件对象列表
-	MsymMap      map[string]*InputElfSymbol // 整个链接过程中用到的符号
+	MargsData       ContextArgs
+	MobjFileList    []*InputElfObj             // obj文件对象列表
+	MsymMap         map[string]*InputElfSymbol // 整个链接过程中用到的符号
+	MmergedSections []*ElfMergedSection        // 所有要输出的合并后的section
 }
 
 func NewLinkContext() LinkContext {

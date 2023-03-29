@@ -44,3 +44,9 @@ func MarkLiveObjs(ctx *LinkContext) {
 		roots = roots[1:]
 	}
 }
+
+func RegisterSectionPieces(ctx *LinkContext) {
+	for _, file := range ctx.MobjFileList {
+		file.RegisterSectionPieces()
+	}
+}
