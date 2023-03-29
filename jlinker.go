@@ -1,7 +1,6 @@
 package main
 
 import (
-	"debug/elf"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -39,21 +38,15 @@ func main() {
 		}
 	}
 
-	fmt.Printf("elf.SHN_XINDEX: %v\n", elf.SHN_XINDEX)
-
 	linker.InputFiles(&ctx)
 	linker.ResolveSymbols(&ctx)
 	linker.RegisterSectionPieces(&ctx)
 
 	fmt.Printf("total loaded objs: %d\n", len(ctx.MobjFileList))
+	fmt.Printf("total merged sectins: %d\n", len(ctx.MmergedSections))
 
-	for _, obj := range ctx.MobjFileList {
-		if obj.MobjFile.Mfile.Name == "out/tests/hello/hello.o" {
-			for _, sym := range obj.MallSymbols {
-				if sym.Mname != "" {
-					fmt.Printf("sym: %s from: %s\n", sym.Mname, sym.MparentFile.MobjFile.MlibName)
-				}
-			}
-		}
+	for _, sec := range ctx.MmergedSections {
+		fmt.Printf("%v\n", sec.Mchunk.Mname)
 	}
+
 }

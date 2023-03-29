@@ -27,5 +27,5 @@ func GetOuputName(name string, flag uint64) string {
 			return res
 		}
 	}
-	return ""
+	return name
 }

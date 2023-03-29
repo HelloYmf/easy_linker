@@ -11,10 +11,6 @@ type ElfMergeableSection struct {
 	Mblock       []*ElfSectionBlock
 }
 
-func NewElfMergeableSection() *ElfMergeableSection {
-	return &ElfMergeableSection{}
-}
-
 func (ms *ElfMergeableSection) GetBlock(offset uint32) (*ElfSectionBlock, uint32) {
 	pos := sort.Search(len(ms.MblockOffset), func(i int) bool {
 		return offset < ms.MblockOffset[i]

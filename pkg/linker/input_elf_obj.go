@@ -3,7 +3,6 @@ package linker
 import (
 	"bytes"
 	"debug/elf"
-	"fmt"
 
 	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
@@ -44,11 +43,10 @@ func (io *InputElfObj) InitialzeSections() {
 		switch elf.SectionType(shdr.Type) {
 		case elf.SHT_GROUP, elf.SHT_SYMTAB, elf.SHT_STRTAB, elf.SHT_REL, elf.SHT_RELA, elf.SHT_NULL:
 		case elf.SHT_SYMTAB_SHNDX:
-			fmt.Println("SHT_SYMTAB_SHNDX found.")
 			// 填充索引数据节
 			io.GetSymtabShndxSecdata(shdr)
 		default: // 需要填充进可执行文件的sections
-			io.MinputSections[i] = NewElfInputSection(io.MobjFile, uint32(i))
+			io.MinputSections[i] = NewElfInputSection(io, uint32(i))
 		}
 	}
 }
@@ -181,7 +179,7 @@ func (io *InputElfObj) InitialzeMergeableSections(ctx *LinkContext) {
 	io.MmergedSections = make([]*ElfMergeableSection, len(io.MinputSections))
 	for i := 0; i < len(io.MinputSections); i++ {
 		sec := io.MinputSections[i]
-		if sec != nil && sec.MisUserd && sec.MparentFile.MelfHdr.Flags&uint32(elf.SHF_MERGE) != 0 {
+		if sec != nil && sec.MisUserd && uint32(sec.MparentFile.MinputSections[i].GetSectionHdr().Flags)&uint32(elf.SHF_MERGE) != 0 {
 			io.MmergedSections[i] = splitSections(ctx, sec)
 			sec.MisUserd = false
 		}
@@ -192,7 +190,7 @@ func findStringNil(data []byte, endSize int) int {
 	if endSize == 1 {
 		return bytes.Index(data, []byte{0})
 	}
-	for i := 0; i < len(data)-endSize; i += endSize {
+	for i := 0; i <= len(data)-endSize; i += endSize {
 		bs := data[i : i+endSize]
 		if utils.AllZeros(bs) {
 			return i
@@ -213,7 +211,7 @@ func splitSections(ctx *LinkContext, isec *InputElfSection) *ElfMergeableSection
 	offset := 0
 
 	if hdr.Flags&uint64(elf.SHF_STRINGS) != 0 {
-		for len(data) >= 0 {
+		for len(data) > 0 {
 			end := findStringNil(data, int(hdr.EntSize))
 			if end == -1 {
 				utils.FatalExit("string not end.")
@@ -244,13 +242,14 @@ func (io *InputElfObj) RegisterSectionPieces() {
 		if ms == nil {
 			continue
 		}
-		ms.Mblock = make([]*ElfSectionBlock, len(ms.Moridata))
+		ms.Mblock = make([]*ElfSectionBlock, 0, len(ms.Moridata))
 		for i := 0; i < len(ms.Moridata); i++ {
 			ms.Mblock = append(ms.Mblock, ms.Mparent.Insert(ms.Moridata[i], ms.Mp2Align))
 		}
 	}
 
-	for i := 1; i < len(io.MallSymbols); i++ {
+	for i := 1; i < len(io.MobjFile.MsymTable); i++ {
+
 		sym := io.MallSymbols[i]
 		symhdr := &io.MobjFile.MsymTable[i]
 

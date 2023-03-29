@@ -41,7 +41,7 @@ func GetMergedSectionInstance(ctx *LinkContext, name string, typ uint64, flag ui
 		return sec
 	}
 
-	sec := NewElfMergedSection(name, flag, typ)
+	sec := NewElfMergedSection(outputname, flag, typ)
 	ctx.MmergedSections = append(ctx.MmergedSections, sec)
 	return sec
 }

@@ -57,6 +57,7 @@ func DealFile(ctx *LinkContext, f *file.File) {
 		for _, obj := range *objs {
 			CheckMachine(ctx, &obj)
 			inputfil := NewElfInputObj(ctx, &obj)
+
 			inputfil.MisUsed = false
 			ctx.MobjFileList = append(ctx.MobjFileList, inputfil)
 		}
