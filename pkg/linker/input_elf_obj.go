@@ -9,33 +9,32 @@ import (
 )
 
 type InputElfObj struct {
-	MobjFile       elf_file.ElfObjFile
-	MinputSections []*InputElfSection
-	Msymtabndxdata []uint32
-	MisUsed        bool
-
-	MallSymbols     []*InputElfSymbol      // 当前文件中所有用到的符号
-	MlocalSymbols   []InputElfSymbol       // 当前文件中所有局部符号
-	MmergedSections []*ElfMergeableSection // 当前文件中所有可合并的节
+	MobjFile           elf_file.ElfObjFile    // 基类obj文件
+	MinputSections     []*InputElfSection     // InputSection数组，对基础SectionHdr的封装
+	Msymtabndxdata     []uint32               // 符号表索引表数据
+	MisUsed            bool                   // 表示当前obj文件是否被实际使用了
+	MallSymbols        []*InputElfSymbol      // 当前文件中所有用到的符号
+	MlocalSymbols      []InputElfSymbol       // 当前文件中所有局部符号
+	MmergeableSections []*ElfMergeableSection // 当前文件中所有可合并的节
 }
 
 func NewElfInputObj(ctx *LinkContext, f *elf_file.ElfObjFile) *InputElfObj {
 	reto := &InputElfObj{MobjFile: *f}
 	reto.MisUsed = false
 
-	// 初始化sections
-	reto.InitialzeSections()
-	// 解析符号表
-	reto.MobjFile.PraseSymbolTable(true)
-	// 初始化符号
+	// 初始化sections--将所有裸的section初始化为InputSection
+	reto.InitialzeSections(ctx)
+	// 解析符号表--初始化符号表相关数据
+	reto.MobjFile.PraseSymbolTable()
+	// 初始化符号--初始化局部符号和全局符号，并更新全局符号map，全局符号此时未设置parent obj文件
 	reto.InitialzeSymbols(ctx)
-	// 初始化可合并的节
+	// 初始化可合并的节--弃用InputSection，在context中建立合并section map
 	reto.InitialzeMergeableSections(ctx)
 
 	return reto
 }
 
-func (io *InputElfObj) InitialzeSections() {
+func (io *InputElfObj) InitialzeSections(ctx *LinkContext) {
 	secnum := len(io.MobjFile.MsectionHdr)
 	io.MinputSections = make([]*InputElfSection, secnum)
 	for i := 0; i < secnum; i++ {
@@ -46,7 +45,8 @@ func (io *InputElfObj) InitialzeSections() {
 			// 填充索引数据节
 			io.GetSymtabShndxSecdata(shdr)
 		default: // 需要填充进可执行文件的sections
-			io.MinputSections[i] = NewElfInputSection(io, uint32(i))
+			name := io.MobjFile.GetSectionName(shdr.Name)
+			io.MinputSections[i] = NewElfInputSection(ctx, name, io, uint32(i))
 		}
 	}
 }
@@ -63,10 +63,12 @@ func (io *InputElfObj) InitialzeSymbols(ctx *LinkContext) {
 	}
 	// 第一个局部符号有特殊意义，暂时不处理，同时将类型设置为Undef，因为undef枚举就是0
 	io.MlocalSymbols[0].MparentFile = io
+
 	for i := 1; i < len(io.MlocalSymbols); i++ {
 		symhdr := io.MobjFile.MsymTable[i]
 		local_sym := &io.MlocalSymbols[i]
 		local_sym.Mname = io.MobjFile.GetSymbolName(symhdr.Name)
+		// 局部符号的所属obj文件都是自己
 		local_sym.MparentFile = io
 		local_sym.Mvalue = int(symhdr.Val)
 		local_sym.Msymndx = int32(i)
@@ -85,8 +87,9 @@ func (io *InputElfObj) InitialzeSymbols(ctx *LinkContext) {
 	}
 	// 处理全部的全局符号
 	for i := len(io.MlocalSymbols); i < len(io.MobjFile.MsymTable); i++ {
-		symhdr := &io.MobjFile.MsymTable[i]
+		symhdr := io.MobjFile.MsymTable[i]
 		name := io.MobjFile.GetSymbolName(symhdr.Name)
+		// 检查全局符号map，如果已经存在，直接返回
 		io.MallSymbols[i] = GetElfSymbolByName(ctx, name)
 	}
 }
@@ -112,7 +115,7 @@ func (io *InputElfObj) GetSymtabShndx(sym elf_file.ElfSymbol, ndx uint64) int64 
 }
 
 // 收集全部的已经定义的全局符号
-func (io *InputElfObj) ResolveSymbols() {
+func (io *InputElfObj) DealGlobalSymbols() {
 	for i := io.MobjFile.MglobalSymndx; i < uint32(len(io.MobjFile.MsymTable)); i++ {
 		sym := io.MallSymbols[i]
 		symhdr := &io.MobjFile.MsymTable[i]
@@ -122,7 +125,7 @@ func (io *InputElfObj) ResolveSymbols() {
 			continue
 		}
 
-		var isec *InputElfSection
+		var isec *InputElfSection = nil
 		if !symhdr.IsAbs() {
 			isec = io.GetSection(*symhdr, uint64(i))
 			if isec == nil {
@@ -130,6 +133,7 @@ func (io *InputElfObj) ResolveSymbols() {
 			}
 		}
 
+		// 如果此时parent obj文件为空，表示这是一个全局符号，对于当前文件来说不是一个未定义符号，此时当前文件就是所属文件
 		if sym.MparentFile == nil {
 			sym.MparentFile = io
 			sym.SetInputSection(isec)
@@ -148,7 +152,7 @@ func (io *InputElfObj) GetSection(sym elf_file.ElfSymbol, ndx uint64) *InputElfS
 	return io.MinputSections[idx]
 }
 
-func (io *InputElfObj) MarkLiveObjs(ctx *LinkContext, feeder func(*InputElfObj)) {
+func (io *InputElfObj) MarkLiveObjs(feeder func(*InputElfObj)) {
 	if !io.MisUsed {
 		return
 	}
@@ -176,11 +180,13 @@ func (io *InputElfObj) ClearSymbols() {
 }
 
 func (io *InputElfObj) InitialzeMergeableSections(ctx *LinkContext) {
-	io.MmergedSections = make([]*ElfMergeableSection, len(io.MinputSections))
+	io.MmergeableSections = make([]*ElfMergeableSection, len(io.MinputSections))
 	for i := 0; i < len(io.MinputSections); i++ {
 		sec := io.MinputSections[i]
 		if sec != nil && sec.MisUserd && uint32(sec.MparentFile.MinputSections[i].GetSectionHdr().Flags)&uint32(elf.SHF_MERGE) != 0 {
-			io.MmergedSections[i] = splitSections(ctx, sec)
+			// 根据InputSection获得一个可合并的section，并建立全局map
+			io.MmergeableSections[i] = NewMergeableSections(ctx, sec)
+			// 将处理过的InputSection设置为未使用，后面只需要操作可合并section即可
 			sec.MisUserd = false
 		}
 	}
@@ -199,12 +205,12 @@ func findStringNil(data []byte, endSize int) int {
 	return -1
 }
 
-func splitSections(ctx *LinkContext, isec *InputElfSection) *ElfMergeableSection {
+func NewMergeableSections(ctx *LinkContext, isec *InputElfSection) *ElfMergeableSection {
 	ms := &ElfMergeableSection{}
 	hdr := isec.GetSectionHdr()
 
-	ms.Mparent = GetMergedSectionInstance(ctx, isec.GetParentName(), uint64(hdr.Type), hdr.Flags)
-
+	// 根据section名字以及类型去全局合并后map中获取，如果获取不到就新增一个
+	ms.Mparent = GetMergedSectionInstance(ctx, isec.GetSectionName(), uint64(hdr.Type), hdr.Flags)
 	ms.Mp2Align = isec.Mp2Align
 
 	data := isec.Mcontents
@@ -238,7 +244,7 @@ func splitSections(ctx *LinkContext, isec *InputElfSection) *ElfMergeableSection
 }
 
 func (io *InputElfObj) RegisterSectionPieces() {
-	for _, ms := range io.MmergedSections {
+	for _, ms := range io.MmergeableSections {
 		if ms == nil {
 			continue
 		}
@@ -258,7 +264,7 @@ func (io *InputElfObj) RegisterSectionPieces() {
 		}
 
 		idx := io.GetSymtabShndx(*symhdr, uint64(i))
-		m := io.MmergedSections[idx]
+		m := io.MmergeableSections[idx]
 		if m == nil {
 			continue
 		}
@@ -270,4 +276,8 @@ func (io *InputElfObj) RegisterSectionPieces() {
 		sym.SetSectionBlock(block)
 		sym.Mvalue = int(off)
 	}
+}
+
+func (f *InputElfObj) GetEhdr() elf_file.ElfHdr {
+	return utils.BinRead[elf_file.ElfHdr](f.MobjFile.Mfile.Contents)
 }

@@ -7,7 +7,6 @@ type ElfSectionBlock struct {
 	Moffset        uint32            // 在section中的偏移
 	Mp2Align       uint8             // 对齐参数
 	MisUserd       bool              // 标记哪些可以合并，保留一份即可
-
 }
 
 func NewElfSectionBlock(section *ElfMergedSection) *ElfSectionBlock {

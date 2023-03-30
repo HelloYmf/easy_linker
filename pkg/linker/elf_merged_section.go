@@ -4,7 +4,7 @@ import "debug/elf"
 
 // 合并后的节
 type ElfMergedSection struct {
-	Mchunk ELfThunk
+	Mchunk ElfChunk
 	Map    map[string]*ElfSectionBlock
 }
 

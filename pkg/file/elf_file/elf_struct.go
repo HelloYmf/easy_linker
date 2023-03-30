@@ -14,6 +14,7 @@ const ElfHdrSize = unsafe.Sizeof(ElfHdr{})
 const ElfSectionHdrSize = unsafe.Sizeof(ElfSectionHdr{})
 const ElfSymbolSize = unsafe.Sizeof(ElfSymbol{})
 const ElfArHdrSize = unsafe.Sizeof(ElfArHeader{})
+const ElfProgramHdrSize = unsafe.Sizeof(ElfProgramHdr{})
 
 type ElfHdr struct {
 	Ident     [16]uint8
@@ -52,6 +53,17 @@ type ElfSymbol struct {
 	Shndx uint16 // 如果符号定义在本目标文件中，该值表示这个符号所在的段在段表中的索引。如果符号不再本目标文件中，或者对于一些特殊符号，Shndx取特殊值
 	Val   uint64
 	Size  uint64
+}
+
+type ElfProgramHdr struct {
+	Type     uint32
+	Flags    uint32
+	Offset   uint64
+	VAddr    uint64
+	PAddr    uint64
+	FileSize uint64
+	MemSize  uint64
+	Align    uint64
 }
 
 // 判断符号是否是绝对符号，不需要重定向

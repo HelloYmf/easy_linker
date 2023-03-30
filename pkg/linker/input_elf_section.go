@@ -15,9 +15,11 @@ type InputElfSection struct {
 	MshSize     uint64
 	MisUserd    bool // 表示是否会被放入可执行文件中
 	Mp2Align    uint8
+	Moffset     uint32            // 在Output section中的偏移
+	MoutputSec  *ElfOutputSection // 属于哪个output section
 }
 
-func NewElfInputSection(objfil *InputElfObj, shndx uint32) *InputElfSection {
+func NewElfInputSection(ctx *LinkContext, name string, objfil *InputElfObj, shndx uint32) *InputElfSection {
 	rets := &InputElfSection{
 		MparentFile: objfil,
 		Mshndx:      shndx,
@@ -31,8 +33,9 @@ func NewElfInputSection(objfil *InputElfObj, shndx uint32) *InputElfSection {
 		utils.FatalExit("暂时不支持压缩节的初始化")
 	}
 	rets.MshSize = shdr.Size
-
 	rets.Mp2Align = uint8(bits.TrailingZeros64(shdr.AddrAlign))
+
+	rets.MoutputSec = GetOutputSection(ctx, name, uint64(shdr.Type), shdr.Flags)
 
 	return rets
 }
@@ -44,6 +47,19 @@ func (is *InputElfSection) GetSectionHdr() *elf_file.ElfSectionHdr {
 	return nil
 }
 
-func (is *InputElfSection) GetParentName() string {
+func (is *InputElfSection) GetSectionName() string {
 	return is.MparentFile.MobjFile.GetSectionName(is.GetSectionHdr().Name)
+}
+
+func (is *InputElfSection) WriteToBuf(buf []byte) {
+
+	if is.GetSectionHdr().Type == uint32(elf.SHT_NOBITS) || is.MshSize == 0 {
+		return
+	}
+
+	is.CopyContents(buf)
+}
+
+func (is *InputElfSection) CopyContents(buf []byte) {
+	copy(buf, is.Mcontents)
 }

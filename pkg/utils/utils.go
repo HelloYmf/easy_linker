@@ -16,6 +16,10 @@ func FatalExit(v any) {
 	os.Exit(-1)
 }
 
+func MyPrintLog(v any) {
+	fmt.Printf("\033[0;0;32m\n\t\t%v\033[0m \n", v)
+}
+
 func MustNoErr(err error) {
 	if err != nil {
 		FatalExit(err)
@@ -48,4 +52,19 @@ func AllZeros(bs []byte) bool {
 	}
 
 	return b == 0
+}
+
+func AlignTo(val, align uint64) uint64 {
+	if align == 0 {
+		return val
+	}
+
+	return (val + align - 1) &^ (align - 1)
+}
+
+func Write[T any](data []byte, e T) {
+	buf := &bytes.Buffer{}
+	err := binary.Write(buf, binary.LittleEndian, e)
+	MustNoErr(err)
+	copy(data, buf.Bytes())
 }

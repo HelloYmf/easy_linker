@@ -10,6 +10,11 @@ import (
 )
 
 func InputFiles(ctx *LinkContext) {
+	// 处理所有输入的.o文件
+	for _, oriobjname := range (*ctx).MargsData.MobjPathList {
+		f := file.MustNewDiskFile(oriobjname)
+		DealFile(ctx, f)
+	}
 	// 处理静态链接库文件
 	for _, orilibname := range (*ctx).MargsData.MstaticLibraryList {
 		// 将名字恢复成.a的状态
@@ -30,12 +35,6 @@ func InputFiles(ctx *LinkContext) {
 			errinfo := fmt.Sprintf("Not found library: %s\n", libname)
 			utils.FatalExit(errinfo)
 		}
-	}
-
-	// 处理所有输入的.o文件
-	for _, oriobjname := range (*ctx).MargsData.MobjPathList {
-		f := file.MustNewDiskFile(oriobjname)
-		DealFile(ctx, f)
 	}
 }
 

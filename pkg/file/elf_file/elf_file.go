@@ -9,11 +9,10 @@ import (
 )
 
 type ElfFile struct {
-	Mfile       file.File
-	MelfHdr     ElfHdr          // ELF_HEADER
-	MsectionHdr []ElfSectionHdr // ELF_SECTION_HEADER[]
-
-	MsectionNameData []byte
+	Mfile            file.File       // file基类
+	MelfHdr          ElfHdr          // ELF_HEADER
+	MsectionHdr      []ElfSectionHdr // ELF_SECTION_HEADER[]
+	MsectionNameData []byte          // 存储节区名字的section内容
 }
 
 func LoadElfBuffer(contents []byte) *ElfFile {

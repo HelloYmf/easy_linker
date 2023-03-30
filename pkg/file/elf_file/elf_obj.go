@@ -9,11 +9,11 @@ import (
 )
 
 type ElfObjFile struct {
-	ElfFile
-	MsymTable     []ElfSymbol
-	MglobalSymndx uint32
-	MsymNameData  []byte
-	MlibName      string // 所属lib
+	ElfFile                   // elf基类
+	MsymTable     []ElfSymbol // 符号数组
+	MglobalSymndx uint32      // 全局符号在符号数组中的起始偏移
+	MsymNameData  []byte      // 存储符号名字的section数据
+	MlibName      string      // 所属lib
 }
 
 func LoadElfObjBuffer(contents []byte) *ElfObjFile {
@@ -36,7 +36,8 @@ func (f *ElfObjFile) SetObjFileParent(parent string) {
 	f.MlibName = parent
 }
 
-func (f *ElfObjFile) PraseSymbolTable(flag bool) {
+func (f *ElfObjFile) PraseSymbolTable() {
+	// 获取符号section在section数组中的索引
 	sec := f.GetTargetTypeOfSections(uint32(elf.SHT_SYMTAB))
 	if len(sec) == 0 {
 		return
@@ -63,7 +64,7 @@ func (f *ElfObjFile) PraseSymbolTable(flag bool) {
 func (f *ElfObjFile) GetSymbolName(name_index uint32) string {
 	// 避免重复获取
 	if len(f.MsymNameData) == 0 {
-		f.PraseSymbolTable(true)
+		f.PraseSymbolTable()
 	}
 	if len(f.MsymNameData) == 0 {
 		return ""

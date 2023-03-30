@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/HelloYmf/elf_linker/pkg/file"
 	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
@@ -19,34 +20,81 @@ func main() {
 	}
 
 	args := os.Args[1:]
-	ctx := linker.PraseArgs(args)
-
-	// 优化路径
+	ctx := linker.PraseArgs(args) // 处理参数列表，初始化context
+	// 优化静态库路径
 	for i, path := range ctx.MargsData.MlibraryPathList {
 		ctx.MargsData.MlibraryPathList[i] = filepath.Clean(path)
 	}
-
 	// 如果链接器没有给参数，就获取第一个obj文件的Machine
 	if ctx.MargsData.March == "" {
 		first_file := file.MustNewDiskFile(ctx.MargsData.MobjPathList[0])
 		switch first_file.Type {
-		case file.FileTypeElfObject:
+		case file.FileTypeElfObject: // ELF文件
 			obj_file := elf_file.LoadElfObj(first_file)
 			ctx.MargsData.March = obj_file.GetElfArch()
-		case file.FileTypePeObject:
+		case file.FileTypePeObject: // COFF文件
 			// TODO
 		}
 	}
 
-	linker.InputFiles(&ctx)
-	linker.ResolveSymbols(&ctx)
-	linker.RegisterSectionPieces(&ctx)
-
-	fmt.Printf("total loaded objs: %d\n", len(ctx.MobjFileList))
-	fmt.Printf("total merged sectins: %d\n", len(ctx.MmergedSections))
-
-	for _, sec := range ctx.MmergedSections {
-		fmt.Printf("%v\n", sec.Mchunk.Mname)
+	utils.MyPrintLog("Input objs: ")
+	for _, file := range ctx.MargsData.MobjPathList {
+		fmt.Println("\t" + file)
 	}
 
+	utils.MyPrintLog("Library path lists: ")
+	for _, path := range ctx.MargsData.MlibraryPathList {
+		fmt.Println("\t" + path)
+	}
+	utils.MyPrintLog("Static Library lists: ")
+	for _, file := range ctx.MargsData.MstaticLibraryList {
+		orilibname := strings.TrimPrefix(file, "-l")
+		libname := fmt.Sprintf("lib%s.a", orilibname)
+		fmt.Println("\t" + libname)
+	}
+
+	// 根据处理输入的文件提取基础信息
+	linker.InputFiles(&ctx)
+
+	linker.CreateInternalFile(&ctx)
+	// 在基础信息上面处理符号之间的依赖，如解析未定义符号、删除未使用的符号和obj文件、生成唯一的全局符号map
+	linker.ResolveSymbols(&ctx)
+	// 将符号所属的parent更加细化（InputSection或Block）
+	linker.RegisterSectionPieces(&ctx)
+	// 创建输出文件
+	linker.CreateSyntheticSections(&ctx)
+
+	linker.BinSections(&ctx)
+
+	ctx.Mchunks = append(ctx.Mchunks, linker.CollectOutputSections(&ctx)...)
+
+	linker.ComputeSectionSizes(&ctx)
+
+	for _, chunk := range ctx.Mchunks {
+		chunk.UpdateSHdr(&ctx)
+	}
+
+	utils.MyPrintLog("Output file:")
+	fmt.Println("\t" + ctx.MargsData.Moutput)
+
+	// 输出可执行文件大小
+	outfilesize := linker.SetOuptSectionOffsets(&ctx)
+	ctx.Mbuf = make([]byte, outfilesize)
+
+	utils.MyPrintLog("Output file size:")
+	printsize := fmt.Sprintf("\t%v bytes", outfilesize)
+	fmt.Println(printsize)
+
+	// 创建文件
+	file, err := os.OpenFile(ctx.MargsData.Moutput, os.O_RDWR|os.O_CREATE, 0777)
+	utils.MustNoErr(err)
+
+	// chunk -> buf
+	for _, chunk := range ctx.Mchunks {
+		chunk.CopyBuf(&ctx)
+	}
+
+	// 写入文件
+	_, err = file.Write(ctx.Mbuf)
+	utils.MustNoErr(err)
 }
