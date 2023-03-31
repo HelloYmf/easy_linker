@@ -24,6 +24,24 @@ func NewElfOutputEhdr() *ElfOutputEhdr {
 	}
 }
 
+func getFlags(ctx *LinkContext) uint32 {
+	if len(ctx.MobjFileList) <= 0 {
+		utils.FatalExit("wrong obj files num.")
+	}
+	flags := ctx.MobjFileList[0].GetEhdr().Flags
+	for _, obj := range ctx.MobjFileList[1:] {
+		if obj == ctx.MinternalObj {
+			continue
+		}
+		// EF_RISVC_RVC == 1
+		if obj.GetEhdr().Flags&1 != 0 {
+			flags |= 1
+			break
+		}
+	}
+	return flags
+}
+
 func (o *ElfOutputEhdr) CopyBuf(ctx *LinkContext) {
 	ehdr := elf_file.ElfHdr{}
 	copy(ehdr.Ident[:], "\177ELF")
@@ -34,19 +52,19 @@ func (o *ElfOutputEhdr) CopyBuf(ctx *LinkContext) {
 	ehdr.Ident[elf.EI_OSABI] = 0
 	ehdr.Ident[elf.EI_ABIVERSION] = 0
 	ehdr.Type = uint16(elf.ET_EXEC)
-	// 这里也写死了
+	// 这里写死了RISCV
 	ehdr.Machine = uint16(elf.EM_RISCV)
 	ehdr.Version = uint32(elf.EV_CURRENT)
 	ehdr.Entry = GetEntryAddress(ctx)
-	// TODO
+	ehdr.PhOff = ctx.MoutPHdr.Mhdr.Offset
 	ehdr.ShOff = ctx.MoutSHdr.Mhdr.Offset
-	// 这里处理不完整
-	ehdr.ShNum = uint16(ctx.MoutSHdr.Mhdr.Size) / uint16(elf_file.ElfSectionHdrSize)
+	ehdr.Flags = getFlags(ctx)
 	ehdr.EhSize = uint16(elf_file.ElfHdrSize)
 	ehdr.PhEntSize = uint16(elf_file.ElfProgramHdrSize)
-	// TODO
+	ehdr.PhNum = uint16(ctx.MoutPHdr.Mhdr.Size) / uint16(elf_file.ElfProgramHdrSize)
 	ehdr.ShEntSize = uint16(elf_file.ElfSectionHdrSize)
-	// TODO
+	ehdr.ShNum = uint16(ctx.MoutSHdr.Mhdr.Size) / uint16(elf_file.ElfSectionHdrSize)
+
 	buf := &bytes.Buffer{}
 	err := binary.Write(buf, binary.LittleEndian, ehdr)
 	utils.MustNoErr(err)

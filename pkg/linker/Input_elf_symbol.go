@@ -14,7 +14,8 @@ type InputElfSymbol struct {
 
 func NewElfInputSymbol(name string) *InputElfSymbol {
 	retsym := &InputElfSymbol{
-		Mname: name,
+		Mname:   name,
+		Msymndx: -1,
 	}
 	return retsym
 }

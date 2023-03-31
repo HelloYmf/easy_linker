@@ -24,6 +24,9 @@ type LinkContext struct {
 
 	MoutEHdr *ElfOutputEhdr // 输出可执行文件中的ELF Header
 	MoutSHdr *ElfOutputShdr // 输出可执行文件中的Section Header
+	MoutPHdr *ElfOutputPhdr // 输出可执行文件中的Program Header
+
+	MtpAddr uint64 // Thread loacl pointer
 }
 
 func NewLinkContext() LinkContext {

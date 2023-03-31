@@ -10,3 +10,12 @@
 - sudo apt search risc                            </br>
 - sudo apt install gcc-12-riscv64-linux-gnu       </br>
 - sudo ln -sf /usr/bin/riscv64-linux-gnu-gcc-12 /usr/bin/riscv64-linux-gnu-gcc                             </br>
+
+## ELF
+```
+ELF Header
+Program Header
+[segment         ][segment                  ][segment                           ]
+[section][section][section][section][section][section][section][section][section]
+Section Header
+```

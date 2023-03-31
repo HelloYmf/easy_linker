@@ -1,11 +1,15 @@
 package linker
 
 import (
+	"debug/elf"
 	"math"
+	"sort"
 
 	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
 )
+
+const IMAGE_BASE uint64 = 0x200000
 
 func ResolveSymbols(ctx *LinkContext) {
 	// 处理全部全局符号，为全局符号指定parent obj
@@ -79,20 +83,50 @@ func CreateInternalFile(ctx *LinkContext) {
 func CreateSyntheticSections(ctx *LinkContext) {
 	ctx.MoutEHdr = NewElfOutputEhdr()
 	ctx.Mchunks = append(ctx.Mchunks, ctx.MoutEHdr)
+	ctx.MoutPHdr = NewElfOutputPhdr()
+	ctx.Mchunks = append(ctx.Mchunks, ctx.MoutPHdr)
 	ctx.MoutSHdr = NewElfOutputShdr()
 	ctx.Mchunks = append(ctx.Mchunks, ctx.MoutSHdr)
 }
 
 func SetOuptSectionOffsets(ctx *LinkContext) uint64 {
-	filoff := uint64(0)
+	addr := IMAGE_BASE
+	for _, chunk := range ctx.Mchunks {
+		if chunk.GetSHdr().Flags&uint64(elf.SHF_ALLOC) == 0 {
+			continue
+		}
 
-	for _, c := range ctx.Mchunks {
-		filoff = utils.AlignTo(filoff, c.GetSHdr().AddrAlign)
-		c.GetSHdr().Offset = filoff
-		filoff += c.GetSHdr().Size
+		addr = utils.AlignTo(addr, chunk.GetSHdr().AddrAlign)
+		chunk.GetSHdr().Addr = addr
+
+		if !isTlsBss(chunk) {
+			addr += chunk.GetSHdr().Size
+		}
 	}
 
-	return filoff
+	i := 0
+	first := ctx.Mchunks[0]
+	for {
+		shdr := ctx.Mchunks[i].GetSHdr()
+		shdr.Offset = shdr.Addr - first.GetSHdr().Addr
+		i++
+
+		if i >= len(ctx.Mchunks) || ctx.Mchunks[i].GetSHdr().Flags&uint64(elf.SHF_ALLOC) == 0 {
+			break
+		}
+	}
+
+	lastShdr := ctx.Mchunks[i-1].GetSHdr()
+	fileoff := lastShdr.Offset + lastShdr.Size
+
+	for ; i < len(ctx.Mchunks); i++ {
+		shdr := ctx.Mchunks[i].GetSHdr()
+		fileoff = utils.AlignTo(fileoff, shdr.AddrAlign)
+		shdr.Offset = fileoff
+		fileoff += shdr.Size
+	}
+
+	return fileoff
 }
 
 func BinSections(ctx *LinkContext) {
@@ -144,5 +178,59 @@ func ComputeSectionSizes(ctx *LinkContext) {
 
 		osec.Mhdr.Size = offset
 		osec.Mhdr.AddrAlign = 1 << p2align
+	}
+}
+
+func SortOutputSections(ctx *LinkContext) {
+	getrank := func(chunk ElfChunker) int32 {
+		typ := chunk.GetSHdr().Type
+		flags := chunk.GetSHdr().Flags
+
+		if flags&uint64(elf.SHF_ALLOC) == 0 {
+			return math.MaxInt32 - 1
+		}
+		if chunk == ctx.MoutSHdr {
+			return math.MaxInt32
+		}
+		if chunk == ctx.MoutEHdr {
+			return 0
+		}
+		if chunk == ctx.MoutPHdr {
+			return 1
+		}
+		if typ == uint32(elf.SHT_NOTE) {
+			return 2
+		}
+
+		b2i := func(b bool) int {
+			if b {
+				return 1
+			}
+			return 0
+		}
+
+		writeable := b2i(flags&uint64(elf.SHF_WRITE) != 0)
+		notExec := b2i(flags&uint64(elf.SHF_EXECINSTR) == 0)
+		notTls := b2i(flags&uint64(elf.SHF_TLS) == 0)
+		isBss := b2i(typ == uint32(elf.SHT_NOBITS))
+
+		return int32(writeable<<7 | notExec<<6 | notTls<<5 | isBss<<4)
+	}
+
+	sort.SliceStable(ctx.Mchunks, func(i, j int) bool {
+		return getrank(ctx.Mchunks[i]) < getrank(ctx.Mchunks[j])
+	})
+}
+
+// .bss是未初始化段
+func isTlsBss(chunk ElfChunker) bool {
+	shdr := chunk.GetSHdr()
+	return shdr.Type == uint32(elf.SHT_NOBITS) &&
+		shdr.Flags&uint64(elf.SHF_TLS) != 0
+}
+
+func ComputeMergedSectionsSize(ctx *LinkContext) {
+	for _, osec := range ctx.MmergedSections {
+		osec.AssignOffsets()
 	}
 }
