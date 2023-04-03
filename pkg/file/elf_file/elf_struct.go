@@ -15,6 +15,7 @@ const ElfSectionHdrSize = unsafe.Sizeof(ElfSectionHdr{})
 const ElfSymbolSize = unsafe.Sizeof(ElfSymbol{})
 const ElfArHdrSize = unsafe.Sizeof(ElfArHeader{})
 const ElfProgramHdrSize = unsafe.Sizeof(ElfProgramHdr{})
+const ElfRelaSize = unsafe.Sizeof(ElfRela{})
 
 type ElfHdr struct {
 	Ident     [16]uint8
@@ -78,6 +79,13 @@ func (sym *ElfSymbol) IsUndef() bool {
 
 func (sym *ElfSymbol) IsCommon() bool {
 	return sym.Shndx == uint16(elf.SHN_COMMON)
+}
+
+type ElfRela struct {
+	Offset uint64
+	Type   uint32
+	Sym    uint32
+	Addend int64
 }
 
 type ElfArHeader struct {

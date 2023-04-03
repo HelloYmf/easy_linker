@@ -17,3 +17,5 @@ EOF
 
 $CC -B. -static "$o_path"/"$test_name".o -o "$o_path"/"$test_name".out
 # ./jlinker "$o_path"/"$test_name".o
+echo "$o_path"/"$test_name".out
+qemu-riscv64 "$o_path"/"$test_name".out

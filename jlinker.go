@@ -55,7 +55,6 @@ func main() {
 
 	// 根据处理输入的文件提取基础信息
 	linker.InputFiles(&ctx)
-	linker.CreateInternalFile(&ctx)
 	// 在基础信息上面处理符号之间的依赖，如解析未定义符号、删除未使用的符号和obj文件、生成唯一的全局符号map
 	linker.ResolveSymbols(&ctx)
 	// 将符号所属的parent更加细化（InputSection或Block）
@@ -65,7 +64,7 @@ func main() {
 	linker.CreateSyntheticSections(&ctx)
 	linker.BinSections(&ctx)
 	ctx.Mchunks = append(ctx.Mchunks, linker.CollectOutputSections(&ctx)...)
-
+	linker.ScanRelocations(&ctx)
 	linker.ComputeSectionSizes(&ctx)
 	linker.SortOutputSections(&ctx)
 

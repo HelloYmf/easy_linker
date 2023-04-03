@@ -5,7 +5,6 @@ import (
 	"math"
 	"sort"
 
-	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
 )
 
@@ -67,19 +66,6 @@ func RegisterSectionPieces(ctx *LinkContext) {
 	}
 }
 
-func CreateInternalFile(ctx *LinkContext) {
-	obj := &InputElfObj{}
-	ctx.MinternalObj = obj
-	ctx.MobjFileList = append(ctx.MobjFileList, obj)
-
-	ctx.MinternalSyms = make([]elf_file.ElfSymbol, 1)
-	obj.MallSymbols = append(obj.MallSymbols, NewElfInputSymbol(""))
-	obj.MobjFile.MglobalSymndx = 1
-	obj.MisUsed = true
-
-	obj.MobjFile.MsymTable = ctx.MinternalSyms
-}
-
 func CreateSyntheticSections(ctx *LinkContext) {
 	ctx.MoutEHdr = NewElfOutputEhdr()
 	ctx.Mchunks = append(ctx.Mchunks, ctx.MoutEHdr)
@@ -87,6 +73,8 @@ func CreateSyntheticSections(ctx *LinkContext) {
 	ctx.Mchunks = append(ctx.Mchunks, ctx.MoutPHdr)
 	ctx.MoutSHdr = NewElfOutputShdr()
 	ctx.Mchunks = append(ctx.Mchunks, ctx.MoutSHdr)
+	ctx.MgotSection = NewGotSection()
+	ctx.Mchunks = append(ctx.Mchunks, ctx.MgotSection)
 }
 
 func SetOuptSectionOffsets(ctx *LinkContext) uint64 {
@@ -126,6 +114,7 @@ func SetOuptSectionOffsets(ctx *LinkContext) uint64 {
 		fileoff += shdr.Size
 	}
 
+	ctx.MoutPHdr.UpdateSHdr(ctx)
 	return fileoff
 }
 
@@ -232,5 +221,28 @@ func isTlsBss(chunk ElfChunker) bool {
 func ComputeMergedSectionsSize(ctx *LinkContext) {
 	for _, osec := range ctx.MmergedSections {
 		osec.AssignOffsets()
+	}
+}
+
+func ScanRelocations(ctx *LinkContext) {
+	for _, file := range ctx.MobjFileList {
+		file.ScanRelocations()
+	}
+
+	syms := make([]*InputElfSymbol, 0)
+	for _, file := range ctx.MobjFileList {
+		for _, sym := range file.MallSymbols {
+			if sym.MparentFile == file && sym.Mflags != 0 {
+				syms = append(syms, sym)
+			}
+		}
+	}
+
+	for _, sym := range syms {
+		if sym.Mflags&NeedsGotTp != 0 {
+			ctx.MgotSection.AddGotTpSymbol(sym)
+		}
+
+		sym.Mflags = 0
 	}
 }

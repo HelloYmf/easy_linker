@@ -25,7 +25,7 @@ func (o *ElfOutputSection) CopyBuf(ctx *LinkContext) {
 
 	base := ctx.Mbuf[o.Mhdr.Offset:]
 	for _, isec := range o.Members {
-		isec.WriteToBuf(base[isec.Moffset:])
+		isec.WriteToBuf(ctx, base[isec.Moffset:])
 	}
 }
 

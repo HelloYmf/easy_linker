@@ -3,6 +3,8 @@ package linker
 import (
 	"bytes"
 	"debug/elf"
+	"fmt"
+	"math"
 
 	"github.com/HelloYmf/elf_linker/pkg/file/elf_file"
 	"github.com/HelloYmf/elf_linker/pkg/utils"
@@ -30,6 +32,8 @@ func NewElfInputObj(ctx *LinkContext, f *elf_file.ElfObjFile) *InputElfObj {
 	reto.InitialzeSymbols(ctx)
 	// 初始化可合并的节--弃用InputSection，在context中建立合并section map
 	reto.InitialzeMergeableSections(ctx)
+	// 跳过异常节
+	reto.SkipEhFrameSections()
 
 	return reto
 }
@@ -47,6 +51,22 @@ func (io *InputElfObj) InitialzeSections(ctx *LinkContext) {
 		default: // 需要填充进可执行文件的sections
 			name := io.MobjFile.GetSectionName(shdr.Name)
 			io.MinputSections[i] = NewElfInputSection(ctx, name, io, uint32(i))
+		}
+	}
+
+	for i := 0; i < len(io.MinputSections); i++ {
+		shdr := &io.MobjFile.MsectionHdr[i]
+		if shdr.Type != uint32(elf.SHT_RELA) {
+			continue
+		}
+		if shdr.Info >= uint32(len(io.MinputSections)) {
+			utils.FatalExit("Wrong Relocation Info.")
+		}
+		if target := io.MinputSections[shdr.Info]; target != nil {
+			if target.MrelSecIdx != math.MaxUint32 {
+				utils.FatalExit("Wrong MrelSecIdx.")
+			}
+			target.MrelSecIdx = uint32(i)
 		}
 	}
 }
@@ -280,4 +300,31 @@ func (io *InputElfObj) RegisterSectionPieces() {
 
 func (f *InputElfObj) GetEhdr() elf_file.ElfHdr {
 	return utils.BinRead[elf_file.ElfHdr](f.MobjFile.Mfile.Contents)
+}
+
+// 过滤.eh_frame，这个是处理异常的
+func (f *InputElfObj) SkipEhFrameSections() {
+	for _, isec := range f.MinputSections {
+		if isec != nil && isec.MisUserd && isec.GetSectionName() == ".eh_frame" {
+			isec.MisUserd = false
+		}
+	}
+}
+
+func (f *InputElfObj) ScanRelocations() {
+	for _, isec := range f.MinputSections {
+		if isec != nil && isec.MisUserd &&
+			isec.GetSectionHdr().Flags&uint64(elf.SHF_ALLOC) != 0 {
+			isec.ScanAllRelocations()
+		}
+	}
+}
+
+func (f *InputElfObj) GetBytesFromShdr(s *elf_file.ElfSectionHdr) []byte {
+	end := s.Offset + s.Size
+	if uint64(len(f.MobjFile.Mfile.Contents)) < end {
+		utils.FatalExit(
+			fmt.Sprintf("section header is out of range: %d", s.Offset))
+	}
+	return f.MobjFile.Mfile.Contents[s.Offset:end]
 }

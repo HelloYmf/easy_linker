@@ -12,3 +12,7 @@ type ElfSectionBlock struct {
 func NewElfSectionBlock(section *ElfMergedSection) *ElfSectionBlock {
 	return &ElfSectionBlock{Moffset: math.MaxUint32, MmergedSection: section}
 }
+
+func (sb *ElfSectionBlock) GetAddr() uint64 {
+	return sb.MmergedSection.Mchunk.Mhdr.Addr + uint64(sb.Moffset)
+}

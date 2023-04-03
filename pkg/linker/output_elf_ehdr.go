@@ -30,9 +30,6 @@ func getFlags(ctx *LinkContext) uint32 {
 	}
 	flags := ctx.MobjFileList[0].GetEhdr().Flags
 	for _, obj := range ctx.MobjFileList[1:] {
-		if obj == ctx.MinternalObj {
-			continue
-		}
 		// EF_RISVC_RVC == 1
 		if obj.GetEhdr().Flags&1 != 0 {
 			flags |= 1
