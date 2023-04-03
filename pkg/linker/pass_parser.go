@@ -145,8 +145,8 @@ func CollectOutputSections(ctx *LinkContext) []ElfChunker {
 	}
 
 	for _, osec := range ctx.MmergedSections {
-		if osec.Mchunk.Mhdr.Size > 0 {
-			osecs = append(osecs, &osec.Mchunk)
+		if osec.Mhdr.Size > 0 {
+			osecs = append(osecs, osec)
 		}
 	}
 

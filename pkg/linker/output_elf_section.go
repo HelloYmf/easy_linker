@@ -1,6 +1,8 @@
 package linker
 
-import "debug/elf"
+import (
+	"debug/elf"
+)
 
 type ElfOutputSection struct {
 	ElfChunk
@@ -19,6 +21,12 @@ func NewElfOutputSection(
 }
 
 func (o *ElfOutputSection) CopyBuf(ctx *LinkContext) {
+
+	var nums uint64 = 0
+	for _, num := range o.Members {
+		nums += num.MshSize
+	}
+
 	if o.Mhdr.Type == uint32(elf.SHT_NOBITS) {
 		return
 	}
@@ -27,6 +35,7 @@ func (o *ElfOutputSection) CopyBuf(ctx *LinkContext) {
 	for _, isec := range o.Members {
 		isec.WriteToBuf(ctx, base[isec.Moffset:])
 	}
+
 }
 
 func GetOutputSection(

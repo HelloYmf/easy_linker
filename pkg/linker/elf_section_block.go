@@ -14,5 +14,5 @@ func NewElfSectionBlock(section *ElfMergedSection) *ElfSectionBlock {
 }
 
 func (sb *ElfSectionBlock) GetAddr() uint64 {
-	return sb.MmergedSection.Mchunk.Mhdr.Addr + uint64(sb.Moffset)
+	return sb.MmergedSection.Mhdr.Addr + uint64(sb.Moffset)
 }

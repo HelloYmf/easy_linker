@@ -15,4 +15,3 @@ int main(void) {
 EOF
 
 $CC -B. -static "$o_path"/"$test_name".o -o "$o_path"/"$test_name".out
-# ./jlinker "$o_path"/"$test_name".o /usr/lib/x86_64-linux-gnu/libc.a

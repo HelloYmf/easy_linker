@@ -9,18 +9,18 @@ import (
 
 // 合并后的节
 type ElfMergedSection struct {
-	Mchunk ElfChunk
-	Map    map[string]*ElfSectionBlock
+	ElfChunk
+	Map map[string]*ElfSectionBlock
 }
 
 func NewElfMergedSection(name string, flag uint64, typ uint64) *ElfMergedSection {
 	m := ElfMergedSection{
-		Mchunk: NewThunk(),
-		Map:    make(map[string]*ElfSectionBlock),
+		ElfChunk: NewThunk(),
+		Map:      make(map[string]*ElfSectionBlock),
 	}
-	m.Mchunk.Mname = name
-	m.Mchunk.Mhdr.Flags = flag
-	m.Mchunk.Mhdr.Type = uint32(typ)
+	m.Mname = name
+	m.Mhdr.Flags = flag
+	m.Mhdr.Type = uint32(typ)
 
 	return &m
 }
@@ -34,8 +34,8 @@ func GetMergedSectionInstance(ctx *LinkContext, name string, typ uint64, flag ui
 
 	find := func() *ElfMergedSection {
 		for _, sec := range ctx.MmergedSections {
-			if outputname == sec.Mchunk.Mname && flag == sec.Mchunk.Mhdr.Flags &&
-				typ == uint64(sec.Mchunk.Mhdr.Type) {
+			if outputname == sec.Mname && flag == sec.Mhdr.Flags &&
+				typ == uint64(sec.Mhdr.Type) {
 				return sec
 			}
 		}
@@ -103,12 +103,12 @@ func (ms *ElfMergedSection) AssignOffsets() {
 		}
 	}
 
-	ms.Mchunk.Mhdr.Size = utils.AlignTo(offset, 1<<p2align)
-	ms.Mchunk.Mhdr.AddrAlign = 1 << p2align
+	ms.Mhdr.Size = utils.AlignTo(offset, 1<<p2align)
+	ms.Mhdr.AddrAlign = 1 << p2align
 }
 
 func (ms *ElfMergedSection) CopyBuf(ctx *LinkContext) {
-	buf := ctx.Mbuf[ms.Mchunk.Mhdr.Offset:]
+	buf := ctx.Mbuf[ms.Mhdr.Offset:]
 	for key := range ms.Map {
 		if block, ok := ms.Map[key]; ok {
 			copy(buf[block.Moffset:], key)

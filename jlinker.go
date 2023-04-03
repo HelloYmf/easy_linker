@@ -95,4 +95,7 @@ func main() {
 	// 写入文件
 	_, err = file.Write(ctx.Mbuf)
 	utils.MustNoErr(err)
+
+	utils.MyPrintLog("Output file write success.\n\n")
+
 }

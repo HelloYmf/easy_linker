@@ -10,12 +10,10 @@ cat <<EOF | $CC -o "$o_path"/"$test_name".o -c -xc -
 #include <stdio.h>
 
 int main(void) {
-    printf("Hello World\n");
+    printf("Hello, World\n");
     return 0;
 }
 EOF
 
 $CC -B. -static "$o_path"/"$test_name".o -o "$o_path"/"$test_name".out
-# ./jlinker "$o_path"/"$test_name".o
-echo "$o_path"/"$test_name".out
 qemu-riscv64 "$o_path"/"$test_name".out
