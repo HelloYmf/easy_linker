@@ -21,7 +21,8 @@ Section Header
 ```
 
 ## linker大致流程
-- Command line options* Symbol resolution (including archive processing)
+- Command line options
+- Symbol resolution (including archive processing)
 - Process input sections
 - Section based garbage collection / identical code folding
 - Create synthetic (linker generated) sections
