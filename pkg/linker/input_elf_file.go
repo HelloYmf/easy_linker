@@ -41,10 +41,14 @@ func InputFiles(ctx *LinkContext) {
 func DealFile(ctx *LinkContext, f *file.File) {
 	switch f.Type {
 	case file.FileTypeElfObject:
-		// 解析.o文件
+		// 加载elf obj文件
+		// elf_obj是elf的子类，elf中会初始化elf header、section header[]，提供获取section name的方法
+		// elf_obj中提供了
 		ef := elf_file.LoadElfObj(f)
+		// 每个obj文件检查一次架构
 		CheckMachine(ctx, ef)
-
+		// 使用elf文件加载Input obj
+		// InputFile是Elf
 		inputfil := NewElfInputObj(ctx, ef)
 		inputfil.MisUsed = true
 

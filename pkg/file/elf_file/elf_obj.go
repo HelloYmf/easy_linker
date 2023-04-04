@@ -10,7 +10,7 @@ import (
 
 type ElfObjFile struct {
 	ElfFile                   // elf基类
-	MsymTable     []ElfSymbol // 符号数组
+	MsymTable     []ElfSymbol // 符号项数组
 	MglobalSymndx uint32      // 全局符号在符号数组中的起始偏移
 	MsymNameData  []byte      // 存储符号名字的section数据
 	MlibName      string      // 所属lib
@@ -37,20 +37,22 @@ func (f *ElfObjFile) SetObjFileParent(parent string) {
 }
 
 func (f *ElfObjFile) PraseSymbolTable() {
-	// 获取符号section在section数组中的索引
-	sec := f.GetTargetTypeOfSections(uint32(elf.SHT_SYMTAB))
-	if len(sec) == 0 {
+	// 根据section hdr中的Type字段获取符号section在section hdr数组中的索引
+	// 返回一个数组，因为同种Type的section hdr可能不止一个
+	secidx := f.GetTargetTypeOfSections(uint32(elf.SHT_SYMTAB))
+	if len(secidx) == 0 {
 		return
 	}
-	symndx := sec[0]
+	symndx := secidx[0]
 	// 获取符号表数据
 	symdata := f.GetSectionData(int64(symndx))
+	// 符号表是一个ElfSymbol结构的数组，每个符号项对应一个ElfSymbol结构
 	symnum := int64(len(symdata)) / int64(ElfSymbolSize)
-	// 获取符号名字section数据
-	symname := f.GetSectionData(int64(f.MsectionHdr[symndx].Link))
-	f.MsymNameData = symname
+	// 获取符号名字section数据，符号header的Link字段定义了符号名字所在的hdr索引
+	symnamedata := f.GetSectionData(int64(f.MsectionHdr[symndx].Link))
+	f.MsymNameData = symnamedata
 
-	// 解析符号表数组
+	// 解析符号项数组
 	f.MsymTable = []ElfSymbol{utils.BinRead[ElfSymbol](symdata)}
 	for i := int64(1); i < symnum; i++ {
 		symdata = symdata[ElfSymbolSize:]

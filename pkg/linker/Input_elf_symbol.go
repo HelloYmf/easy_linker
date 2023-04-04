@@ -10,7 +10,7 @@ type InputElfSymbol struct {
 	MparentFile *InputElfObj // 所属文件
 	Mname       string       // 名字
 	Mvalue      int
-	Msymndx     int32 // SectionHeader数组中索引
+	Msymndx     int32 // Symbol table数组中索引
 	MgotTpIndx  int32
 
 	MinputSection *InputElfSection // 所属的section

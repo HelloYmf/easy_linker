@@ -11,7 +11,7 @@ import (
 )
 
 type InputElfObj struct {
-	MobjFile           elf_file.ElfObjFile    // 基类obj文件
+	MobjFile           elf_file.ElfObjFile    // 基类obj文件--提供符号结构数组
 	MinputSections     []*InputElfSection     // InputSection数组，对基础SectionHdr的封装
 	Msymtabndxdata     []uint32               // 符号表索引表数据
 	MisUsed            bool                   // 表示当前obj文件是否被实际使用了
@@ -21,18 +21,30 @@ type InputElfObj struct {
 }
 
 func NewElfInputObj(ctx *LinkContext, f *elf_file.ElfObjFile) *InputElfObj {
+
 	reto := &InputElfObj{MobjFile: *f}
 	reto.MisUsed = false
 
-	// 初始化sections--将所有裸的section初始化为InputSection
-	reto.InitialzeSections(ctx)
-	// 解析符号表--初始化符号表相关数据
+	// 解析符号表--初始化Symbol结构数组
 	reto.MobjFile.PraseSymbolTable()
-	// 初始化符号--初始化局部符号和全局符号，并更新全局符号map，全局符号此时未设置parent obj文件
+	// 初始化sections--继续封装一层section header名字为InputSection，
+	// 每个InputSection可以绑定所属的obj文件，
+	// 以及根据name、type、flag等信息生成一个OutputSection
+	// 一个obj文件对应多个InputSection，多个InputSection可能对应一个OutputSection，并且OutputSection存在于全局context结构中，并且如果name、type、flag一致就认为是同一个
+	reto.InitialzeSections(ctx)
+	// 初始化符号--初始化局部符号和全局符号
+	// InputObjFile中一个所有符号的指针表，以及只属于当前obj文件的局部符号表，全局符号数组在context结构中使用map唯一保存，因为符号不能重定义
+	// 对于局部符号只需要将符号的所属obj文件设置为自己，并插入数组中即可
+	// 对于全局符号，需要检查map文件中是否存在，存在就直接返回指针。不存在则创建并更新map，后续解析其他文件时再补充parent信息
 	reto.InitialzeSymbols(ctx)
 	// 初始化可合并的节--弃用InputSection，在context中建立合并section map
+	// 根据section hdr->flag判断可合并的section，如果发现了，初始化一个MergeableSection
+	// 此时这个section不再受InputSection，而是MergeableSection,InputSection对应的IsUsed置false
+	// 每个MergeableSection归MergedSection管理，多对一的关系
+	// 并且这个MergedSection也跟全局符号一样由context结构维护
+	// 每个MergeableSection的内部数据由多个大小为EntSize的fragment块组成
 	reto.InitialzeMergeableSections(ctx)
-	// 跳过异常节
+	// 跳过异常节，将异常InputSection的IsUsed置false
 	reto.SkipEhFrameSections()
 
 	return reto
@@ -62,6 +74,7 @@ func (io *InputElfObj) InitialzeSections(ctx *LinkContext) {
 		if shdr.Info >= uint32(len(io.MinputSections)) {
 			utils.FatalExit("Wrong Relocation Info.")
 		}
+
 		if target := io.MinputSections[shdr.Info]; target != nil {
 			if target.MrelSecIdx != math.MaxUint32 {
 				utils.FatalExit("Wrong MrelSecIdx.")
@@ -73,6 +86,7 @@ func (io *InputElfObj) InitialzeSections(ctx *LinkContext) {
 
 func (io *InputElfObj) InitialzeSymbols(ctx *LinkContext) {
 	if io.MobjFile.MsymTable == nil {
+		// 这里不能直接退出，因为有的库obj文件没有符号
 		return
 	}
 
@@ -183,8 +197,11 @@ func (io *InputElfObj) MarkLiveObjs(feeder func(*InputElfObj)) {
 			continue
 		}
 
+		// 经过上面的所有obj文件解析，已经在全局context列表中进行了更新，每个全局符号都有了所属的parent
 		if symhdr.IsUndef() && !sym.MparentFile.MisUsed {
+			// 将使用到了但是还没激活的parent obj file激活
 			sym.MparentFile.MisUsed = true
+			// 递归处理全部符号之间的关系
 			feeder(sym.MparentFile)
 		}
 

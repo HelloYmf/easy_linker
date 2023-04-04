@@ -9,21 +9,21 @@ type ContextArgs struct {
 }
 
 type LinkContext struct {
-	MargsData       ContextArgs
-	MobjFileList    []*InputElfObj             // obj文件对象列表
-	MsymMap         map[string]*InputElfSymbol // 整个链接过程中用到的符号
-	MmergedSections []*ElfMergedSection        // 所有要输出的合并后的section
+	MargsData ContextArgs // 参数列表
 
-	Mchunks         []ElfChunker // 所有要写入可执行文件的元素的基类
+	MobjFileList []*InputElfObj             // obj文件对象列表
+	MsymMap      map[string]*InputElfSymbol // 整个链接过程中用到的全局符号
+
+	Mchunks         []ElfChunker        // 所有要写入可执行文件的元素的基类
+	MmergedSections []*ElfMergedSection // 所有要输出的合并后的section
 	MoutputSections []*ElfOutputSection
-	Mbuf            []byte
 
 	MoutEHdr    *ElfOutputEhdr // 输出可执行文件中的ELF Header
 	MoutSHdr    *ElfOutputShdr // 输出可执行文件中的Section Header
 	MoutPHdr    *ElfOutputPhdr // 输出可执行文件中的Program Header
 	MgotSection *ElfGotSection // 输出可执行文件中的Got Section
-
-	MtpAddr uint64 // Thread loacl pointer
+	MtpAddr     uint64         // Thread loacl pointer
+	Mbuf        []byte
 }
 
 func NewLinkContext() LinkContext {

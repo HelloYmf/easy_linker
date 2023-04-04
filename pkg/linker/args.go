@@ -54,8 +54,7 @@ func JudgeArgs(args *[]string, name string) (bool, string) {
 	return false, arg
 }
 
-func PraseArgs(args []string) LinkContext {
-	ctx := NewLinkContext()
+func PraseArgs(ctx *LinkContext, args []string) {
 	for len(args) > 0 {
 		isArg := false
 		curArg := ""
@@ -148,5 +147,4 @@ func PraseArgs(args []string) LinkContext {
 		ctx.MargsData.MobjPathList = append(ctx.MargsData.MobjPathList, args[0])
 		args = args[1:]
 	}
-	return ctx
 }

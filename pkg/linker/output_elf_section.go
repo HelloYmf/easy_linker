@@ -6,7 +6,7 @@ import (
 
 type ElfOutputSection struct {
 	ElfChunk
-	Members []*InputElfSection
+	Members []*InputElfSection // 包含的InputSections
 	Midx    uint32
 }
 
@@ -46,8 +46,7 @@ func GetOutputSection(
 
 	find := func() *ElfOutputSection {
 		for _, osec := range ctx.MoutputSections {
-			if name == osec.Mname && typ == uint64(osec.Mhdr.Type) &&
-				flags == osec.Mhdr.Flags {
+			if name == osec.Mname && typ == uint64(osec.Mhdr.Type) && flags == osec.Mhdr.Flags {
 				return osec
 			}
 		}

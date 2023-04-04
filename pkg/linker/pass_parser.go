@@ -11,11 +11,12 @@ import (
 const IMAGE_BASE uint64 = 0x200000
 
 func ResolveSymbols(ctx *LinkContext) {
-	// 处理全部全局符号，为全局符号指定parent obj
+	// 处理全部全局符号，为当前文件中定义的全局符号指定parent obj
 	for _, file := range ctx.MobjFileList {
 		file.DealGlobalSymbols()
 	}
 
+	// 解析当前文件中未定义的全局符号
 	// 标记使用到的obj文件
 	// 标记规则：
 	//		1.默认只有输入的obj文件是被使用状态的

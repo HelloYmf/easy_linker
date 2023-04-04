@@ -20,7 +20,9 @@ func main() {
 	}
 
 	args := os.Args[1:]
-	ctx := linker.PraseArgs(args) // 处理参数列表，初始化context
+	// 初始化context结构体，后续操作全部围绕这个结构展开
+	ctx := linker.NewLinkContext()
+	linker.PraseArgs(&ctx, args) // 解析参数列表，填充ctx.MargsData字段
 	// 优化静态库路径
 	for i, path := range ctx.MargsData.MlibraryPathList {
 		ctx.MargsData.MlibraryPathList[i] = filepath.Clean(path)
@@ -29,7 +31,7 @@ func main() {
 	if ctx.MargsData.March == "" {
 		first_file := file.MustNewDiskFile(ctx.MargsData.MobjPathList[0])
 		switch first_file.Type {
-		case file.FileTypeElfObject: // ELF文件
+		case file.FileTypeElfObject: // ELF-BOJ文件
 			obj_file := elf_file.LoadElfObj(first_file)
 			ctx.MargsData.March = obj_file.GetElfArch()
 		case file.FileTypePeObject: // COFF文件
@@ -62,6 +64,7 @@ func main() {
 	linker.ComputeMergedSectionsSize(&ctx)
 	// 创建输出文件
 	linker.CreateSyntheticSections(&ctx)
+	// 为OutputSection指定InputSections
 	linker.BinSections(&ctx)
 	ctx.Mchunks = append(ctx.Mchunks, linker.CollectOutputSections(&ctx)...)
 	linker.ScanRelocations(&ctx)

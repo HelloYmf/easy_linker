@@ -11,16 +11,15 @@ import (
 
 type InputElfSection struct {
 	MparentFile *InputElfObj // 所属文件
-	Mcontents   []byte       // 内部数据
-	Mshndx      uint32       // SectionHeader数组内下标
-	MshSize     uint64
-	MisUserd    bool // 表示是否会被放入可执行文件中
+	Mcontents   []byte       // section数据
+	Mshndx      uint32       // section header数组内下标
+	MshSize     uint64       // section数据大小
+	MisUserd    bool         // 表示是否会被放入可执行文件中
 	Mp2Align    uint8
-	Moffset     uint32            // 在Output section中的偏移
 	MoutputSec  *ElfOutputSection // 属于哪个output section
-
-	MrelSecIdx uint32
-	Mrels      []elf_file.ElfRela // 重定位块的数组
+	Moffset     uint32            // 在Output section中的偏移
+	MrelSecIdx  uint32
+	Mrels       []elf_file.ElfRela // 重定位块的数组
 }
 
 func NewElfInputSection(ctx *LinkContext, name string, objfil *InputElfObj, shndx uint32) *InputElfSection {
@@ -41,7 +40,6 @@ func NewElfInputSection(ctx *LinkContext, name string, objfil *InputElfObj, shnd
 	}
 	rets.MshSize = shdr.Size
 	rets.Mp2Align = uint8(bits.TrailingZeros64(shdr.AddrAlign))
-
 	rets.MoutputSec = GetOutputSection(ctx, name, uint64(shdr.Type), shdr.Flags)
 
 	return rets
