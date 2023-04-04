@@ -8,9 +8,19 @@ mkdir -p "$o_path"
 
 cat <<EOF | $CC -o "$o_path"/"$test_name".o -c -xc -
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+char* getstr() {
+    char* str = (char*)malloc(100);
+    strcpy(str, "HelloTest");
+    strcat(str, "world");
+    return str;
+}
 
 int main(void) {
-    printf("Hello, World\n");
+    char* s = getstr();
+    printf("123 %s\n\n", getstr());
     return 0;
 }
 EOF

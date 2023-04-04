@@ -11,7 +11,7 @@
 - sudo apt install gcc-12-riscv64-linux-gnu       </br>
 - sudo ln -sf /usr/bin/riscv64-linux-gnu-gcc-12 /usr/bin/riscv64-linux-gnu-gcc                             </br>
 
-## ELF
+## ELF可执行文件结构
 ```
 ELF Header
 Program Header
@@ -19,3 +19,13 @@ Program Header
 [section][section][section][section][section][section][section][section][section]
 Section Header
 ```
+
+## linker大致流程
+- Command line options* Symbol resolution (including archive processing)
+- Process input sections
+- Section based garbage collection / identical code folding
+- Create synthetic (linker generated) sections
+- Scan relocations* Create output sections
+- Assign input sections to output sections
+- Write file header
+- Write sections

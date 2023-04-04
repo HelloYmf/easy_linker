@@ -97,5 +97,4 @@ func main() {
 	utils.MustNoErr(err)
 
 	utils.MyPrintLog("Output file write success.\n\n")
-
 }
