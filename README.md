@@ -26,7 +26,8 @@ Section Header
 - Process input sections
 - Section based garbage collection / identical code folding
 - Create synthetic (linker generated) sections
-- Scan relocations* Create output sections
+- Scan relocations
+- Create output sections
 - Assign input sections to output sections
 - Write file header
 - Write sections
